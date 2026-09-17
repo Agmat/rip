@@ -22,9 +22,13 @@ jobs:
         run: go vet ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        # v6 defaults to a golangci-lint v1.x binary that's too old to parse
+        # a go.mod targeting this new a Go version; v7 is the first major
+        # built for v2, matching the v2.13.2 installed locally (brew).
+        uses: golangci/golangci-lint-action@v7
         with:
           working-directory: backend
+          version: v2.13.2
 
       - name: go test
         run: go test -race ./...
