@@ -24,6 +24,31 @@ func (q *Queries) DeactivateBoosterConfigs(ctx context.Context, arg DeactivateBo
 	return err
 }
 
+const getActiveBoosterConfig = `-- name: GetActiveBoosterConfig :one
+SELECT id, set_code, booster_type, version, config, is_active, created_at FROM booster_configs
+WHERE set_code = $1 AND booster_type = $2 AND is_active
+`
+
+type GetActiveBoosterConfigParams struct {
+	SetCode     string `json:"set_code"`
+	BoosterType string `json:"booster_type"`
+}
+
+func (q *Queries) GetActiveBoosterConfig(ctx context.Context, arg GetActiveBoosterConfigParams) (BoosterConfig, error) {
+	row := q.db.QueryRow(ctx, getActiveBoosterConfig, arg.SetCode, arg.BoosterType)
+	var i BoosterConfig
+	err := row.Scan(
+		&i.ID,
+		&i.SetCode,
+		&i.BoosterType,
+		&i.Version,
+		&i.Config,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertBoosterConfig = `-- name: InsertBoosterConfig :one
 INSERT INTO booster_configs (set_code, booster_type, version, config, is_active)
 VALUES ($1, $2, $3, $4, true)
@@ -55,6 +80,40 @@ func (q *Queries) InsertBoosterConfig(ctx context.Context, arg InsertBoosterConf
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listActiveBoosterConfigsWithSetName = `-- name: ListActiveBoosterConfigsWithSetName :many
+SELECT bc.set_code, s.name AS set_name, bc.booster_type
+FROM booster_configs bc
+JOIN sets s ON s.code = bc.set_code
+WHERE bc.is_active
+ORDER BY bc.set_code, bc.booster_type
+`
+
+type ListActiveBoosterConfigsWithSetNameRow struct {
+	SetCode     string `json:"set_code"`
+	SetName     string `json:"set_name"`
+	BoosterType string `json:"booster_type"`
+}
+
+func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]ListActiveBoosterConfigsWithSetNameRow, error) {
+	rows, err := q.db.Query(ctx, listActiveBoosterConfigsWithSetName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveBoosterConfigsWithSetNameRow
+	for rows.Next() {
+		var i ListActiveBoosterConfigsWithSetNameRow
+		if err := rows.Scan(&i.SetCode, &i.SetName, &i.BoosterType); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const nextBoosterConfigVersion = `-- name: NextBoosterConfigVersion :one
