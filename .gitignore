@@ -1,0 +1,18 @@
+# Go
+/backend/bin/
+*.test
+*.out
+
+# graphify (local dev aid, rebuilt by post-commit hook)
+graphify-out/
+
+# Node / frontend
+/frontend/node_modules/
+/frontend/.next/
+
+# Env
+.env
+*.env.local
+
+# macOS
+.DS_Store
