@@ -12,23 +12,46 @@ can be replayed from its seed.
 
 ```
 /backend   Go API (net/http, pgx/v5, sqlc, goose)
-/frontend  Next.js app (later phase)
+/frontend  Next.js app (App Router, TypeScript, Tailwind)
 /art       card images and generation prompts (placeholder assets only — cards render from Scryfall)
 ```
 
 ## Local setup
 
-Requires Go 1.22+ and a container runtime (OrbStack or Docker Desktop) for Postgres.
+Requires Go 1.22+, Node 20+, pnpm, and a container runtime (OrbStack or Docker Desktop) for
+Postgres.
+
+**1. Database**
 
 ```bash
-cp backend/.env.example backend/.env
-make dev   # starts Postgres via docker compose
-make run   # starts the API on :8080
+cd backend
+cp .env.example .env
+make dev          # starts Postgres via docker compose
+make migrate-up   # applies the schema
 ```
 
+**2. Import a set** (once — pulls booster structure from MTGJSON and card images from Scryfall)
+
 ```bash
-curl localhost:8080/healthz
+set -a && source .env && set +a
+go run ./cmd/import FDN
 ```
+
+**3. Start the API** (from `backend/`, keep running)
+
+```bash
+make run   # :8080
+```
+
+**4. Start the frontend** (from `frontend/`, in a second terminal)
+
+```bash
+pnpm install
+cp .env.example .env.local
+pnpm dev   # :3000
+```
+
+Open [localhost:3000](http://localhost:3000), pick a set, rip a pack.
 
 ## API
 
