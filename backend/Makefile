@@ -1,4 +1,6 @@
-.PHONY: dev run test lint fmt
+.PHONY: dev run test lint fmt migrate-up migrate-down sqlc-generate
+
+DATABASE_URL ?= postgres://rip:rip@localhost:5432/rip?sslmode=disable
 
 # Start Postgres (docker-compose.yml lives at the repo root).
 dev:
@@ -16,3 +18,12 @@ lint:
 
 fmt:
 	gofmt -l -w .
+
+migrate-up:
+	goose -dir migrations postgres "$(DATABASE_URL)" up
+
+migrate-down:
+	goose -dir migrations postgres "$(DATABASE_URL)" down
+
+sqlc-generate:
+	sqlc generate
