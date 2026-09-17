@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Agmat/rip/backend/internal/api"
 	"github.com/Agmat/rip/backend/internal/config"
 	"github.com/Agmat/rip/backend/internal/httpx"
 )
@@ -49,10 +50,8 @@ func run() error {
 		return fmt.Errorf("ping db: %w", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", handleHealthz)
-
-	handler := httpx.WithRequestID(httpx.WithLogging(logger)(mux))
+	apiServer := api.NewServer(pool, logger)
+	handler := httpx.WithRequestID(httpx.WithLogging(logger)(apiServer.Routes()))
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -81,10 +80,6 @@ func run() error {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
-}
-
-func handleHealthz(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func newLogger(level string) *slog.Logger {
