@@ -72,3 +72,36 @@ func TestRequestIDFromContext_EmptyOutsideMiddleware(t *testing.T) {
 		t.Fatalf("RequestIDFromContext on bare context = %q, want empty", id)
 	}
 }
+
+func TestWithCORS(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	handler := httpx.WithCORS("http://localhost:3000")(inner)
+
+	t.Run("regular request gets CORS headers and reaches the inner handler", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:3000" {
+			t.Errorf("Access-Control-Allow-Origin = %q, want http://localhost:3000", got)
+		}
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want 200 (inner handler should have run)", rec.Code)
+		}
+	})
+
+	t.Run("OPTIONS preflight is answered without reaching the inner handler", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/v1/packs/open", nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusNoContent {
+			t.Errorf("status = %d, want 204", rec.Code)
+		}
+		if rec.Body.Len() != 0 {
+			t.Errorf("body = %q, want empty (inner handler should not have run)", rec.Body.String())
+		}
+	})
+}

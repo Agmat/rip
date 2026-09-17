@@ -8,9 +8,10 @@ import (
 
 // Config holds the API server's runtime settings, read once at startup.
 type Config struct {
-	Port        string
-	DatabaseURL string
-	LogLevel    string
+	Port          string
+	DatabaseURL   string
+	LogLevel      string
+	AllowedOrigin string
 }
 
 // Load reads Config from the environment. DATABASE_URL is required; PORT and
@@ -23,9 +24,10 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Port:        getenvDefault("PORT", "8080"),
-		DatabaseURL: dbURL,
-		LogLevel:    getenvDefault("LOG_LEVEL", "info"),
+		Port:          getenvDefault("PORT", "8080"),
+		DatabaseURL:   dbURL,
+		LogLevel:      getenvDefault("LOG_LEVEL", "info"),
+		AllowedOrigin: getenvDefault("ALLOWED_ORIGIN", "http://localhost:3000"),
 	}, nil
 }
 

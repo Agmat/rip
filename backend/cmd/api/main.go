@@ -51,7 +51,7 @@ func run() error {
 	}
 
 	apiServer := api.NewServer(pool, logger)
-	handler := httpx.WithRequestID(httpx.WithLogging(logger)(apiServer.Routes()))
+	handler := httpx.WithRequestID(httpx.WithLogging(logger)(httpx.WithCORS(cfg.AllowedOrigin)(apiServer.Routes())))
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
