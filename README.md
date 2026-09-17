@@ -30,6 +30,11 @@ make run   # starts the API on :8080
 curl localhost:8080/healthz
 ```
 
+## API
+
+See [`backend/openapi.yaml`](backend/openapi.yaml) for the full v1 API (sets, opening a pack,
+fetching a past open).
+
 ## Card data
 
 Booster structure comes from [MTGJSON](https://mtgjson.com) (weighted pack variants and print

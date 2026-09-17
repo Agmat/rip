@@ -1,0 +1,192 @@
+openapi: 3.0.3
+info:
+  title: rip API
+  description: >
+    Opens simulated Magic: The Gathering booster packs. Pack contents follow
+    the real printed booster structure of the chosen set. Unofficial Fan
+    Content permitted under the Fan Content Policy; not approved or
+    endorsed by Wizards of the Coast.
+  version: "1.0"
+servers:
+  - url: /
+
+paths:
+  /healthz:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/sets:
+    get:
+      summary: List sets available to open
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SetSummary"
+
+  /v1/packs/open:
+    post:
+      summary: Open one pack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [set_code]
+              properties:
+                set_code:
+                  type: string
+                  example: FDN
+                booster_type:
+                  type: string
+                  description: Defaults to "play", the only type rip currently opens.
+                  example: play
+      responses:
+        "201":
+          description: Pack opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackOpen"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          description: No active booster config for that set/booster_type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/packs/{id}:
+    get:
+      summary: Fetch a previously opened pack
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackOpen"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: not_found
+            message:
+              type: string
+              example: pack open not found
+
+    SetSummary:
+      type: object
+      properties:
+        code:
+          type: string
+          example: FDN
+        name:
+          type: string
+          example: Foundations
+        booster_types:
+          type: array
+          items:
+            type: string
+          example: [play]
+
+    CardSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, mythic, special, bonus]
+        collector_number:
+          type: string
+        set_code:
+          type: string
+        image_uris:
+          type: object
+          description: >
+            Either {"image_uris": {...}} for a single-faced card, or
+            {"faces": [{"name","image_uris"}, ...]} for a double-faced one.
+            Images are Scryfall's own, shown whole and unaltered.
+
+    CardPick:
+      type: object
+      properties:
+        slot:
+          type: integer
+        sheet_name:
+          type: string
+          example: rareMythicWithShowcase
+        foil:
+          type: boolean
+        card:
+          $ref: "#/components/schemas/CardSummary"
+
+    PackOpen:
+      type: object
+      properties:
+        open_id:
+          type: string
+          format: uuid
+        set_code:
+          type: string
+        booster_type:
+          type: string
+        config_version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardPick"
