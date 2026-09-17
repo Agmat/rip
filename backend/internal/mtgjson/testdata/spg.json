@@ -1,0 +1,23 @@
+{
+  "data": {
+    "name": "Special Guests",
+    "code": "SPG",
+    "cards": [
+      {
+        "uuid": "062138c4-0052-57dc-9f1e-cdfddae861a8",
+        "name": "Goblin Bushwhacker",
+        "rarity": "mythic",
+        "number": "78",
+        "setCode": "SPG",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "052df800-9f13-4469-9e8c-16d327025aa0"
+        }
+      }
+    ],
+    "booster": {}
+  }
+}

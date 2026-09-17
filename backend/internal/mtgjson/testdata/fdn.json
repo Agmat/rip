@@ -1,0 +1,177 @@
+{
+  "data": {
+    "name": "Foundations",
+    "code": "FDN",
+    "cards": [
+      {
+        "uuid": "01a67c48-2ba1-55ba-aee9-8f0ad4ccf5c9",
+        "name": "Ruby, Daring Tracker",
+        "rarity": "uncommon",
+        "number": "245",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "fe3e7dd2-b66d-4218-9fde-f84bec26b7bf"
+        }
+      },
+      {
+        "uuid": "00dec49b-3df4-5c26-a18d-3b48e577b5f2",
+        "name": "Reassembling Skeleton",
+        "rarity": "uncommon",
+        "number": "182",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "28e84b1b-1c05-4e1b-93b8-9cc2ca73509d"
+        }
+      },
+      {
+        "uuid": "0369b369-a4ac-54c5-8317-5ba92b671ae5",
+        "name": "Swiftblade Vindicator",
+        "rarity": "rare",
+        "number": "246",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "f94618ec-000c-4371-b925-05ff82bfe221"
+        }
+      },
+      {
+        "uuid": "0026b9a2-e2f8-5c3d-bef2-d698955a74e3",
+        "name": "Burglar Rat",
+        "rarity": "common",
+        "number": "170",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "de1c8758-ce3d-49cf-8173-c0eb46f5e7bc"
+        }
+      },
+      {
+        "uuid": "06eb1b5f-067c-534c-b273-48c086180093",
+        "name": "High-Society Hunter",
+        "rarity": "rare",
+        "number": "61",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "51da4a4b-ea12-4169-a7cf-eb4427f13e84"
+        }
+      },
+      {
+        "uuid": "0058c59f-1948-568d-80d6-a35ac7381c62",
+        "name": "Fake Your Own Death",
+        "rarity": "common",
+        "number": "174",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "693635a6-df50-44c5-9598-0c79b45d4df4"
+        }
+      },
+      {
+        "uuid": "083a5b53-5e60-5885-9f51-08d3ee19eab2",
+        "name": "Mountain",
+        "rarity": "common",
+        "number": "278",
+        "setCode": "FDN",
+        "finishes": [
+          "foil",
+          "nonfoil"
+        ],
+        "identifiers": {
+          "scryfallId": "279df7e2-2a3b-464a-a7df-e91da28e3a8c"
+        }
+      }
+    ],
+    "booster": {
+      "play": {
+        "boosters": [
+          {
+            "contents": {
+              "common": 1,
+              "uncommon": 1,
+              "land": 1,
+              "rareMythicWithShowcase": 1,
+              "specialGuest": 1,
+              "foil": 1
+            },
+            "weight": 1
+          }
+        ],
+        "boostersTotalWeight": 1,
+        "name": "Foundations Play Booster",
+        "sheets": {
+          "common": {
+            "cards": {
+              "0026b9a2-e2f8-5c3d-bef2-d698955a74e3": 1,
+              "0058c59f-1948-568d-80d6-a35ac7381c62": 1
+            },
+            "totalWeight": 2,
+            "foil": false
+          },
+          "uncommon": {
+            "cards": {
+              "00dec49b-3df4-5c26-a18d-3b48e577b5f2": 1,
+              "01a67c48-2ba1-55ba-aee9-8f0ad4ccf5c9": 1
+            },
+            "totalWeight": 2,
+            "foil": false
+          },
+          "land": {
+            "cards": {
+              "083a5b53-5e60-5885-9f51-08d3ee19eab2": 1
+            },
+            "totalWeight": 1,
+            "foil": false
+          },
+          "rareMythicWithShowcase": {
+            "cards": {
+              "0369b369-a4ac-54c5-8317-5ba92b671ae5": 16,
+              "06eb1b5f-067c-534c-b273-48c086180093": 14
+            },
+            "totalWeight": 30,
+            "foil": false
+          },
+          "specialGuest": {
+            "cards": {
+              "062138c4-0052-57dc-9f1e-cdfddae861a8": 1
+            },
+            "totalWeight": 1,
+            "foil": false
+          },
+          "foil": {
+            "cards": {
+              "0026b9a2-e2f8-5c3d-bef2-d698955a74e3": 6775888,
+              "0058c59f-1948-568d-80d6-a35ac7381c62": 6775888
+            },
+            "totalWeight": 13551776,
+            "foil": true
+          }
+        },
+        "sourceSetCodes": [
+          "FDN",
+          "SPG"
+        ]
+      }
+    }
+  }
+}

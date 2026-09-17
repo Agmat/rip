@@ -1,0 +1,101 @@
+{
+  "data": [
+    {
+      "id": "fe3e7dd2-b66d-4218-9fde-f84bec26b7bf",
+      "name": "Ruby, Daring Tracker",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.jpg?1783909051",
+        "normal": "https://cards.scryfall.io/normal/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.jpg?1783909051",
+        "large": "https://cards.scryfall.io/large/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.jpg?1783909051",
+        "png": "https://cards.scryfall.io/png/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.png?1783909051",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.jpg?1783909051",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/f/e/fe3e7dd2-b66d-4218-9fde-f84bec26b7bf.jpg?1783909051"
+      }
+    },
+    {
+      "id": "052df800-9f13-4469-9e8c-16d327025aa0",
+      "name": "Goblin Bushwhacker",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.jpg?1783908596",
+        "normal": "https://cards.scryfall.io/normal/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.jpg?1783908596",
+        "large": "https://cards.scryfall.io/large/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.jpg?1783908596",
+        "png": "https://cards.scryfall.io/png/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.png?1783908596",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.jpg?1783908596",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/0/5/052df800-9f13-4469-9e8c-16d327025aa0.jpg?1783908596"
+      }
+    },
+    {
+      "id": "28e84b1b-1c05-4e1b-93b8-9cc2ca73509d",
+      "name": "Reassembling Skeleton",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.jpg?1783909073",
+        "normal": "https://cards.scryfall.io/normal/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.jpg?1783909073",
+        "large": "https://cards.scryfall.io/large/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.jpg?1783909073",
+        "png": "https://cards.scryfall.io/png/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.png?1783909073",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.jpg?1783909073",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/2/8/28e84b1b-1c05-4e1b-93b8-9cc2ca73509d.jpg?1783909073"
+      }
+    },
+    {
+      "id": "f94618ec-000c-4371-b925-05ff82bfe221",
+      "name": "Swiftblade Vindicator",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.jpg?1783909051",
+        "normal": "https://cards.scryfall.io/normal/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.jpg?1783909051",
+        "large": "https://cards.scryfall.io/large/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.jpg?1783909051",
+        "png": "https://cards.scryfall.io/png/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.png?1783909051",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.jpg?1783909051",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/f/9/f94618ec-000c-4371-b925-05ff82bfe221.jpg?1783909051"
+      }
+    },
+    {
+      "id": "de1c8758-ce3d-49cf-8173-c0eb46f5e7bc",
+      "name": "Burglar Rat",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.jpg?1783909076",
+        "normal": "https://cards.scryfall.io/normal/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.jpg?1783909076",
+        "large": "https://cards.scryfall.io/large/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.jpg?1783909076",
+        "png": "https://cards.scryfall.io/png/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.png?1783909076",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.jpg?1783909076",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/d/e/de1c8758-ce3d-49cf-8173-c0eb46f5e7bc.jpg?1783909076"
+      }
+    },
+    {
+      "id": "51da4a4b-ea12-4169-a7cf-eb4427f13e84",
+      "name": "High-Society Hunter",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.jpg?1783909112",
+        "normal": "https://cards.scryfall.io/normal/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.jpg?1783909112",
+        "large": "https://cards.scryfall.io/large/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.jpg?1783909112",
+        "png": "https://cards.scryfall.io/png/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.png?1783909112",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.jpg?1783909112",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/5/1/51da4a4b-ea12-4169-a7cf-eb4427f13e84.jpg?1783909112"
+      }
+    },
+    {
+      "id": "693635a6-df50-44c5-9598-0c79b45d4df4",
+      "name": "Fake Your Own Death",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.jpg?1783909074",
+        "normal": "https://cards.scryfall.io/normal/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.jpg?1783909074",
+        "large": "https://cards.scryfall.io/large/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.jpg?1783909074",
+        "png": "https://cards.scryfall.io/png/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.png?1783909074",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.jpg?1783909074",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/6/9/693635a6-df50-44c5-9598-0c79b45d4df4.jpg?1783909074"
+      }
+    },
+    {
+      "id": "279df7e2-2a3b-464a-a7df-e91da28e3a8c",
+      "name": "Mountain",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1783909041",
+        "normal": "https://cards.scryfall.io/normal/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1783909041",
+        "large": "https://cards.scryfall.io/large/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1783909041",
+        "png": "https://cards.scryfall.io/png/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.png?1783909041",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1783909041",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1783909041"
+      }
+    }
+  ],
+  "not_found": []
+}
