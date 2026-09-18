@@ -170,6 +170,15 @@ components:
             content-hash ?v= query param), not an external URL. Null if
             this set has no pack photo.
           example: /v1/sets/FDN/pack.png?v=4f43e42d64dbc9534c49500f8275e2c2
+        pack_price_eur:
+          type: number
+          nullable: true
+          description: Cardmarket trend price (EUR) of one sealed booster, as of pack_priced_at. Null if unpriced.
+          example: 4.36
+        pack_priced_at:
+          type: string
+          format: date-time
+          nullable: true
         booster_types:
           type: array
           items:
@@ -210,6 +219,14 @@ components:
           type: boolean
         card:
           $ref: "#/components/schemas/CardSummary"
+        price_eur:
+          type: number
+          nullable: true
+          description: >
+            Cardmarket trend price (EUR) of this pick: the foil price for a
+            foil pick when Cardmarket lists one, else the non-foil price.
+            Null when the card is unpriced.
+          example: 0.25
 
     PackOpen:
       type: object
@@ -230,3 +247,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CardPick"
+        pricing:
+          $ref: "#/components/schemas/Pricing"
+
+    Pricing:
+      type: object
+      description: Value summary of the pack. Prices are as of priced_at (last Cardmarket refresh), not as of the open.
+      properties:
+        pack_price_eur:
+          type: number
+          nullable: true
+          example: 4.36
+        total_value_eur:
+          type: number
+          description: Sum of price_eur over priced picks, rounded to cents.
+          example: 12.4
+        unpriced_cards:
+          type: integer
+          description: Picks with no price, excluded from total_value_eur.
+          example: 1
+        priced_at:
+          type: string
+          format: date-time
+          nullable: true

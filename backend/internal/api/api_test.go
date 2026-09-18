@@ -58,6 +58,12 @@ func TestListSets(t *testing.T) {
 	if len(resp.Sets[0].BoosterTypes) != 1 || resp.Sets[0].BoosterTypes[0] != "play" {
 		t.Errorf("booster types = %v, want [play]", resp.Sets[0].BoosterTypes)
 	}
+	if resp.Sets[0].PackPriceEUR == nil || *resp.Sets[0].PackPriceEUR != 4.36 {
+		t.Errorf("pack_price_eur = %v, want 4.36", resp.Sets[0].PackPriceEUR)
+	}
+	if resp.Sets[0].PackPricedAt == nil {
+		t.Error("pack_priced_at is nil, want the seeded refresh time")
+	}
 }
 
 func TestOpenPack_And_GetPack_RoundTrip(t *testing.T) {

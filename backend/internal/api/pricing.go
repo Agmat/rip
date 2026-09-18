@@ -32,15 +32,7 @@ func pickPrice(foil bool, price, foilPrice pgtype.Float8) *float64 {
 
 // summarize totals the priced picks and pairs them with the pack's price.
 func summarize(packPrice pgtype.Float8, pricedAt pgtype.Timestamptz, cards []cardPick) pricing {
-	var p pricing
-	if packPrice.Valid {
-		v := round2(packPrice.Float64)
-		p.PackPriceEUR = &v
-	}
-	if pricedAt.Valid {
-		t := pricedAt.Time
-		p.PricedAt = &t
-	}
+	p := pricing{PackPriceEUR: nullableFloat(packPrice), PricedAt: nullableTime(pricedAt)}
 	var total float64
 	for _, c := range cards {
 		if c.PriceEUR == nil {
@@ -57,4 +49,23 @@ func summarize(packPrice pgtype.Float8, pricedAt pgtype.Timestamptz, cards []car
 // 0.30000000000000004 into the JSON.
 func round2(f float64) float64 {
 	return math.Round(f*100) / 100
+}
+
+// nullableFloat converts a possibly-absent DB price into the pointer form
+// the JSON API uses for "unpriced", rounding valid values to cents.
+func nullableFloat(f pgtype.Float8) *float64 {
+	if !f.Valid {
+		return nil
+	}
+	v := round2(f.Float64)
+	return &v
+}
+
+// nullableTime converts a possibly-absent DB timestamp into a pointer,
+// nil meaning "never refreshed".
+func nullableTime(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
