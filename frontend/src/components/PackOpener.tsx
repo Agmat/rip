@@ -56,7 +56,7 @@ export default function PackOpener() {
     }
   }
 
-  function handleReset() {
+  function handleChangePack() {
     setPack(null);
     setOpenError(null);
   }
@@ -70,9 +70,15 @@ export default function PackOpener() {
           ))}
         </div>
         <PackValue pricing={pack.pricing} revealDelayMs={pack.cards.length * 80 + 400} />
-        <button onClick={handleReset} className="rip-button">
-          rip another
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleRip} disabled={tearing} className="rip-button">
+            {tearing ? "ripping…" : "rip another"}
+          </button>
+          <button onClick={handleChangePack} className="pack-arrow text-sm">
+            change pack
+          </button>
+        </div>
+        {openError && <p className="text-sm text-red-400">Couldn&apos;t open the pack: {openError}</p>}
       </div>
     );
   }
