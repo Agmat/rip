@@ -151,7 +151,9 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 
 	// Price what was just imported. Non-fatal: the set is fully usable
 	// unpriced, and `make prices` can be re-run at any time.
-	st, err := prices.Refresh(ctx, pool, imp.httpClient, cardmarket.DefaultPriceGuideURL)
+	// The guide is ~26 MB; the 30s client used for MTGJSON/Scryfall is too tight for it.
+	priceClient := &http.Client{Timeout: 2 * time.Minute}
+	st, err := prices.Refresh(ctx, pool, priceClient, cardmarket.DefaultPriceGuideURL)
 	if err != nil {
 		slog.Warn("price refresh failed, set imported without prices", "set", setCode, "error", err)
 		return nil

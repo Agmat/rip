@@ -22,12 +22,9 @@ type pricing struct {
 // card has no price at all - callers must not treat that as 0.
 func pickPrice(foil bool, price, foilPrice pgtype.Float8) *float64 {
 	if foil && foilPrice.Valid {
-		return &foilPrice.Float64
+		return nullableFloat(foilPrice)
 	}
-	if price.Valid {
-		return &price.Float64
-	}
-	return nil
+	return nullableFloat(price)
 }
 
 // summarize totals the priced picks and pairs them with the pack's price.

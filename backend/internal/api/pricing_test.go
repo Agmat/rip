@@ -21,6 +21,7 @@ func TestPickPrice(t *testing.T) {
 		{"foil falls back to trend when no foil price", true, f8(1.5), pgtype.Float8{}, ptr(1.5)},
 		{"unpriced", false, pgtype.Float8{}, pgtype.Float8{}, nil},
 		{"non-foil ignores foil-only price", false, pgtype.Float8{}, f8(9), nil},
+		{"rounds to cents", false, f8(0.123), pgtype.Float8{}, ptr(0.12)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
