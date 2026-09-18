@@ -17,7 +17,7 @@ SELECT * FROM booster_configs
 WHERE set_code = $1 AND booster_type = $2 AND is_active;
 
 -- name: ListActiveBoosterConfigsWithSetName :many
-SELECT bc.set_code, s.name AS set_name, bc.booster_type
+SELECT bc.set_code, s.name AS set_name, s.pack_image_url, bc.booster_type
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code
 WHERE bc.is_active

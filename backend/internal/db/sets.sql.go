@@ -7,23 +7,31 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const upsertSet = `-- name: UpsertSet :one
-INSERT INTO sets (code, name)
-VALUES ($1, $2)
-ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
-RETURNING code, name, created_at
+INSERT INTO sets (code, name, pack_image_url)
+VALUES ($1, $2, $3)
+ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, pack_image_url = EXCLUDED.pack_image_url
+RETURNING code, name, created_at, pack_image_url
 `
 
 type UpsertSetParams struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Code         string      `json:"code"`
+	Name         string      `json:"name"`
+	PackImageUrl pgtype.Text `json:"pack_image_url"`
 }
 
 func (q *Queries) UpsertSet(ctx context.Context, arg UpsertSetParams) (Set, error) {
-	row := q.db.QueryRow(ctx, upsertSet, arg.Code, arg.Name)
+	row := q.db.QueryRow(ctx, upsertSet, arg.Code, arg.Name, arg.PackImageUrl)
 	var i Set
-	err := row.Scan(&i.Code, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.Code,
+		&i.Name,
+		&i.CreatedAt,
+		&i.PackImageUrl,
+	)
 	return i, err
 }

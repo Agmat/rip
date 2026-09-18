@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deactivateBoosterConfigs = `-- name: DeactivateBoosterConfigs :exec
@@ -83,7 +85,7 @@ func (q *Queries) InsertBoosterConfig(ctx context.Context, arg InsertBoosterConf
 }
 
 const listActiveBoosterConfigsWithSetName = `-- name: ListActiveBoosterConfigsWithSetName :many
-SELECT bc.set_code, s.name AS set_name, bc.booster_type
+SELECT bc.set_code, s.name AS set_name, s.pack_image_url, bc.booster_type
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code
 WHERE bc.is_active
@@ -91,9 +93,10 @@ ORDER BY bc.set_code, bc.booster_type
 `
 
 type ListActiveBoosterConfigsWithSetNameRow struct {
-	SetCode     string `json:"set_code"`
-	SetName     string `json:"set_name"`
-	BoosterType string `json:"booster_type"`
+	SetCode      string      `json:"set_code"`
+	SetName      string      `json:"set_name"`
+	PackImageUrl pgtype.Text `json:"pack_image_url"`
+	BoosterType  string      `json:"booster_type"`
 }
 
 func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]ListActiveBoosterConfigsWithSetNameRow, error) {
@@ -105,7 +108,12 @@ func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]Li
 	var items []ListActiveBoosterConfigsWithSetNameRow
 	for rows.Next() {
 		var i ListActiveBoosterConfigsWithSetNameRow
-		if err := rows.Scan(&i.SetCode, &i.SetName, &i.BoosterType); err != nil {
+		if err := rows.Scan(
+			&i.SetCode,
+			&i.SetName,
+			&i.PackImageUrl,
+			&i.BoosterType,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
