@@ -9,6 +9,7 @@ import (
 type setSummary struct {
 	Code         string   `json:"code"`
 	Name         string   `json:"name"`
+	PackImageURL *string  `json:"pack_image_url"`
 	BoosterTypes []string `json:"booster_types"`
 }
 
@@ -30,7 +31,11 @@ func (s *Server) handleListSets(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			i = len(sets)
 			index[row.SetCode] = i
-			sets = append(sets, setSummary{Code: row.SetCode, Name: row.SetName})
+			var packImageURL *string
+			if row.PackImageUrl.Valid {
+				packImageURL = &row.PackImageUrl.String
+			}
+			sets = append(sets, setSummary{Code: row.SetCode, Name: row.SetName, PackImageURL: packImageURL})
 		}
 		sets[i].BoosterTypes = append(sets[i].BoosterTypes, row.BoosterType)
 	}

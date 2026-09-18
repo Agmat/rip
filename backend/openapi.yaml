@@ -130,6 +130,11 @@ components:
         name:
           type: string
           example: Foundations
+        pack_image_url:
+          type: string
+          nullable: true
+          description: Official booster pack photo, hotlinked from TCGplayer. Null if unavailable.
+          example: https://product-images.tcgplayer.com/fit-in/600x600/562116.jpg
         booster_types:
           type: array
           items:
