@@ -73,14 +73,13 @@ type BoosterConfig struct {
 
 // SealedProduct is one purchasable product for a set (a booster pack, box,
 // bundle, etc.) as MTGJSON models it. Only enough to find "the play booster
-// pack", its TCGplayer id (resolves to the product's real photo) and its
-// Cardmarket id (resolves to its price).
+// pack" and its Cardmarket id, which resolves to the sealed booster's price.
+// (Pack art no longer comes from here - see cmd/import/packimage.go.)
 type SealedProduct struct {
 	Category    string `json:"category"`
 	Subtype     string `json:"subtype"`
 	Identifiers struct {
-		TCGplayerProductID string `json:"tcgplayerProductId"`
-		MCMID              string `json:"mcmId"`
+		MCMID string `json:"mcmId"`
 	} `json:"identifiers"`
 }
 

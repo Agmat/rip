@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -81,12 +80,12 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 	}
 
 	var packImage []byte
-	if packImgURL, ok := packImageURL(primary, boosterType); !ok {
-		slog.Warn("no TCGplayer pack image found, importing without one", "set", setCode, "booster_type", boosterType)
-	} else if img, err := imp.fetchPackImage(ctx, packImgURL); err != nil {
+	if img, found, err := imp.fetchPackImageFromWiki(ctx, DefaultMTGWikiPageBaseURL, DefaultMTGWikiFilesBaseURL, primary.Data.Name); err != nil {
 		// Decorative art must never block getting the cards in - any
-		// failure here (fetch, decode, process) is a warning, not an error.
-		slog.Warn("failed to fetch/process pack image, importing without one", "set", setCode, "error", err)
+		// fetch failure here is a warning, not an error.
+		slog.Warn("failed to fetch pack image from mtg.wiki, importing without one", "set", setCode, "error", err)
+	} else if !found {
+		slog.Warn("no Play Booster pack image found on mtg.wiki, importing without one", "set", setCode)
 	} else {
 		packImage = img
 	}
@@ -216,44 +215,8 @@ func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile,
 	return nil
 }
 
-// fetchPackImage downloads the product photo at url and removes its studio
-// background (see packart.go).
-func (imp *importer) fetchPackImage(ctx context.Context, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	resp, err := imp.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetch: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read body: %w", err)
-	}
-	return removeWhiteBackground(body)
-}
-
-// packImageURL finds the set's booster pack product (MTGJSON sealedProduct
-// entry with category "booster_pack" and a matching subtype) and resolves
-// it to the product's real photo via TCGplayer's public image CDN - neither
-// MTGJSON nor Scryfall hosts pack art. false if the set has no such listing;
-// callers should treat that as non-fatal (decorative, not draw-affecting).
-func packImageURL(sf *mtgjson.SetFile, boosterType string) (string, bool) {
-	for _, p := range sf.Data.SealedProduct {
-		if p.Category == "booster_pack" && p.Subtype == boosterType && p.Identifiers.TCGplayerProductID != "" {
-			return fmt.Sprintf("https://product-images.tcgplayer.com/fit-in/600x600/%s.jpg", p.Identifiers.TCGplayerProductID), true
-		}
-	}
-	return "", false
-}
-
-// packMCMID finds the Cardmarket product id of the set's booster pack (same
-// sealedProduct lookup as packImageURL), or NULL if the set has no such
+// packMCMID finds the Cardmarket product id of the set's booster pack (MTGJSON sealedProduct
+// entry with category "booster_pack" and a matching subtype), or NULL if the set has no such
 // listing - the pack is then simply unpriced.
 func packMCMID(sf *mtgjson.SetFile, boosterType string) pgtype.Int4 {
 	for _, p := range sf.Data.SealedProduct {
