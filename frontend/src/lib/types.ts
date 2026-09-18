@@ -4,6 +4,7 @@
 export type SetSummary = {
   code: string;
   name: string;
+  pack_image_url: string | null;
   booster_types: string[];
 };
 

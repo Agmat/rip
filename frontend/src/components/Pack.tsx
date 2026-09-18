@@ -25,10 +25,9 @@ function androidHasGyro() {
 
 export default function Pack({ set, tearing }: { set: SetSummary; tearing: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [idle, setIdle] = useState(true);
   const [gyroActive, setGyroActive] = useState(androidHasGyro);
 
-  function setHighlight(x: number, y: number) {
+  function setTilt(x: number, y: number) {
     ref.current?.style.setProperty("--mx", x.toFixed(3));
     ref.current?.style.setProperty("--my", y.toFixed(3));
   }
@@ -37,8 +36,7 @@ export default function Pack({ set, tearing }: { set: SetSummary; tearing: boole
     if (!gyroActive) return;
     function onOrientation(e: DeviceOrientationEvent) {
       if (e.beta == null || e.gamma == null) return;
-      setIdle(false);
-      setHighlight(
+      setTilt(
         Math.min(1, Math.max(0, (e.gamma + 45) / 90)),
         Math.min(1, Math.max(0, e.beta / 90)),
       );
@@ -55,19 +53,27 @@ export default function Pack({ set, tearing }: { set: SetSummary; tearing: boole
       const state = await DOE.requestPermission();
       if (state === "granted") setGyroActive(true);
     } catch {
-      // denied or unsupported - keep the idle sweep
+      // denied or unsupported - pack just stays flat
     }
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
-    setIdle(false);
-    setHighlight((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height);
+    setTilt((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height);
   }
 
   function handlePointerLeave() {
-    setIdle(true);
-    setHighlight(0.5, 0.5);
+    setTilt(0.5, 0.5);
+  }
+
+  if (!set.pack_image_url) {
+    // ponytail: text-only fallback; revisit only if a real set ships with
+    // no TCGplayer listing to resolve a pack photo from.
+    return (
+      <div className="pack pack-fallback">
+        <p className="pack-name">{set.name}</p>
+      </div>
+    );
   }
 
   return (
@@ -78,21 +84,19 @@ export default function Pack({ set, tearing }: { set: SetSummary; tearing: boole
       onPointerLeave={handlePointerLeave}
       onPointerDown={requestGyro}
     >
-      <div className="pack-crimp top" />
-      <div className="pack-body">
+      <div className="pack-half top">
         <Image
-          className="pack-icon"
-          src={`https://svgs.scryfall.io/sets/${set.code.toLowerCase()}.svg`}
-          alt=""
-          width={44}
-          height={44}
+          src={set.pack_image_url}
+          alt={`${set.name} Play Booster pack`}
+          fill
+          sizes="240px"
           unoptimized
+          priority
         />
-        <p className="pack-name">{set.name}</p>
-        <p className="pack-type">Play Booster, 14 cards</p>
       </div>
-      <div className="pack-crimp bottom" />
-      <div className={`pack-sheen${idle ? " idle" : ""}`} />
+      <div className="pack-half bottom">
+        <Image src={set.pack_image_url} alt="" fill sizes="240px" unoptimized aria-hidden />
+      </div>
     </div>
   );
 }
