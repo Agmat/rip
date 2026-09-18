@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { packImageSrc } from "@/lib/api";
 import type { SetSummary } from "@/lib/types";
 
 // iOS gates DeviceOrientationEvent behind a user-gesture permission prompt;
@@ -86,7 +87,7 @@ export default function Pack({ set, tearing }: { set: SetSummary; tearing: boole
     >
       <div className="pack-half top">
         <Image
-          src={set.pack_image_url}
+          src={packImageSrc(set.pack_image_url)}
           alt={`${set.name} Play Booster pack`}
           fill
           sizes="240px"
@@ -95,7 +96,15 @@ export default function Pack({ set, tearing }: { set: SetSummary; tearing: boole
         />
       </div>
       <div className="pack-half bottom">
-        <Image src={set.pack_image_url} alt="" fill sizes="240px" unoptimized aria-hidden />
+        <Image
+          src={packImageSrc(set.pack_image_url)}
+          alt=""
+          fill
+          sizes="240px"
+          unoptimized
+          priority
+          aria-hidden
+        />
       </div>
     </div>
   );
