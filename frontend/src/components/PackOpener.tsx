@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { listSets, openPack } from "@/lib/api";
-import type { PackOpen, SetSummary } from "@/lib/types";
+import { formatEUR } from "@/lib/money";
+import type { PackOpen, Pricing, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
 import Pack from "./Pack";
 
@@ -68,6 +69,7 @@ export default function PackOpener() {
             <CardTile key={`${pick.slot}-${pick.card.id}`} pick={pick} index={i} />
           ))}
         </div>
+        <PackValue pricing={pack.pricing} revealDelayMs={pack.cards.length * 80 + 400} />
         <button onClick={handleReset} className="rip-button">
           rip another
         </button>
@@ -98,10 +100,48 @@ export default function PackOpener() {
           </button>
         )}
       </div>
+      {selectedSet.pack_price_eur != null && (
+        <p className="text-sm text-muted">{formatEUR(selectedSet.pack_price_eur)} on Cardmarket</p>
+      )}
       <button onClick={handleRip} disabled={tearing} className="rip-button">
         {tearing ? "ripping…" : "rip pack"}
       </button>
       {openError && <p className="text-sm text-red-400">Couldn&apos;t open the pack: {openError}</p>}
+    </div>
+  );
+}
+
+// Shown once the last card has revealed (same reveal animation, delayed past
+// the stagger) so the total lands as the punchline rather than a spoiler.
+function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs: number }) {
+  const { pack_price_eur: packPrice, total_value_eur: total, unpriced_cards: unpriced } = pricing;
+
+  let summary: ReactNode;
+  if (packPrice != null) {
+    const delta = total - packPrice;
+    summary = (
+      <>
+        Pulled {formatEUR(total)} from a {formatEUR(packPrice)} pack{" "}
+        <span className={delta >= 0 ? "text-green-400" : "text-red-400"}>
+          ({delta >= 0 ? "+" : "−"}{formatEUR(Math.abs(delta))})
+        </span>
+      </>
+    );
+  } else {
+    summary = <>Pack value: {formatEUR(total)}</>;
+  }
+
+  return (
+    <div
+      className="text-center opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
+      style={{ animationDelay: `${revealDelayMs}ms` }}
+    >
+      <p className="text-ink">{summary}</p>
+      {unpriced > 0 && (
+        <p className="text-xs text-muted">
+          {unpriced} card{unpriced === 1 ? "" : "s"} unpriced on Cardmarket
+        </p>
+      )}
     </div>
   );
 }

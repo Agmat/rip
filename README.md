@@ -37,6 +37,16 @@ set -a && source .env && set +a
 go run ./cmd/import FDN
 ```
 
+**2b. Refresh prices** (optional — `import` already prices a set once; re-run whenever you want
+current Cardmarket prices)
+
+```bash
+make prices
+```
+
+Prices come from Cardmarket's public daily price guide, joined on the Cardmarket product ids
+MTGJSON provides. Cards Cardmarket doesn't list stay unpriced.
+
 **3. Start the API** (from `backend/`, keep running)
 
 ```bash
@@ -62,4 +72,6 @@ fetching a past open).
 
 Booster structure comes from [MTGJSON](https://mtgjson.com) (weighted pack variants and print
 sheets, as printed). Card images are loaded from [Scryfall](https://scryfall.com) and are never
-cropped, altered, or watermarked. See `backend/cmd/import` for how a set is added.
+cropped, altered, or watermarked. See `backend/cmd/import` for how a set is added. Card and
+sealed-booster prices are Cardmarket "trend" prices from Cardmarket's public price guide,
+refreshed by `make prices`.

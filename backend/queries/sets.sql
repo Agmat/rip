@@ -1,8 +1,20 @@
 -- name: UpsertSet :one
-INSERT INTO sets (code, name, pack_image)
-VALUES ($1, $2, $3)
-ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, pack_image = EXCLUDED.pack_image
+-- mcm_id is COALESCEd so re-importing a set as a *source* set (e.g. SPG
+-- pulled in by FDN's booster, with no sealed product of its own) doesn't
+-- wipe the id a previous primary import stored.
+INSERT INTO sets (code, name, pack_image, mcm_id)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (code) DO UPDATE SET
+    name       = EXCLUDED.name,
+    pack_image = EXCLUDED.pack_image,
+    mcm_id     = COALESCE(EXCLUDED.mcm_id, sets.mcm_id)
 RETURNING *;
 
 -- name: GetSetPackImage :one
 SELECT pack_image FROM sets WHERE code = $1;
+
+-- name: ListSetsWithMcmID :many
+SELECT code, mcm_id FROM sets WHERE mcm_id IS NOT NULL;
+
+-- name: UpdateSetPackPrice :exec
+UPDATE sets SET pack_price_eur = $2, pack_priced_at = $3 WHERE code = $1;

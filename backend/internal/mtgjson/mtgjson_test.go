@@ -91,3 +91,31 @@ func TestFetchSet_NotFound(t *testing.T) {
 		t.Fatal("expected an error for a 404 response, got nil")
 	}
 }
+
+func TestParseSetFile_McmIDs(t *testing.T) {
+	data, err := os.ReadFile("testdata/fdn.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sf, err := mtgjson.ParseSetFile(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := sf.Data.Cards[0].Identifiers.MCMID; got != "796513" {
+		t.Errorf("cards[0].Identifiers.MCMID = %q, want 796513", got)
+	}
+
+	var pack *mtgjson.SealedProduct
+	for i := range sf.Data.SealedProduct {
+		if sf.Data.SealedProduct[i].Category == "booster_pack" {
+			pack = &sf.Data.SealedProduct[i]
+		}
+	}
+	if pack == nil {
+		t.Fatal("no booster_pack sealed product in fixture")
+	}
+	if pack.Identifiers.MCMID != "781936" {
+		t.Errorf("booster_pack MCMID = %q, want 781936", pack.Identifiers.MCMID)
+	}
+}

@@ -11,17 +11,68 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const listCardsWithMcmID = `-- name: ListCardsWithMcmID :many
+SELECT id, mcm_id FROM cards WHERE mcm_id IS NOT NULL
+`
+
+type ListCardsWithMcmIDRow struct {
+	ID    pgtype.UUID `json:"id"`
+	McmID pgtype.Int4 `json:"mcm_id"`
+}
+
+func (q *Queries) ListCardsWithMcmID(ctx context.Context) ([]ListCardsWithMcmIDRow, error) {
+	rows, err := q.db.Query(ctx, listCardsWithMcmID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCardsWithMcmIDRow
+	for rows.Next() {
+		var i ListCardsWithMcmIDRow
+		if err := rows.Scan(&i.ID, &i.McmID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateCardPrice = `-- name: UpdateCardPrice :exec
+UPDATE cards SET price_eur = $2, price_foil_eur = $3, priced_at = $4 WHERE id = $1
+`
+
+type UpdateCardPriceParams struct {
+	ID           pgtype.UUID        `json:"id"`
+	PriceEur     pgtype.Float8      `json:"price_eur"`
+	PriceFoilEur pgtype.Float8      `json:"price_foil_eur"`
+	PricedAt     pgtype.Timestamptz `json:"priced_at"`
+}
+
+func (q *Queries) UpdateCardPrice(ctx context.Context, arg UpdateCardPriceParams) error {
+	_, err := q.db.Exec(ctx, updateCardPrice,
+		arg.ID,
+		arg.PriceEur,
+		arg.PriceFoilEur,
+		arg.PricedAt,
+	)
+	return err
+}
+
 const upsertCard = `-- name: UpsertCard :one
-INSERT INTO cards (id, set_code, name, rarity, collector_number, scryfall_id, image_uris, finishes)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO cards (id, set_code, name, rarity, collector_number, scryfall_id, image_uris, finishes, mcm_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     name             = EXCLUDED.name,
     rarity           = EXCLUDED.rarity,
     collector_number = EXCLUDED.collector_number,
     scryfall_id      = EXCLUDED.scryfall_id,
     image_uris       = EXCLUDED.image_uris,
-    finishes         = EXCLUDED.finishes
-RETURNING id, set_code, name, rarity, collector_number, scryfall_id, image_uris, finishes, created_at
+    finishes         = EXCLUDED.finishes,
+    mcm_id           = EXCLUDED.mcm_id
+RETURNING id, set_code, name, rarity, collector_number, scryfall_id, image_uris, finishes, created_at, mcm_id, price_eur, price_foil_eur, priced_at
 `
 
 type UpsertCardParams struct {
@@ -33,8 +84,11 @@ type UpsertCardParams struct {
 	ScryfallID      pgtype.UUID `json:"scryfall_id"`
 	ImageUris       []byte      `json:"image_uris"`
 	Finishes        []string    `json:"finishes"`
+	McmID           pgtype.Int4 `json:"mcm_id"`
 }
 
+// Price columns are deliberately not touched here: re-importing a set
+// refreshes card data, not prices (cmd/prices owns those).
 func (q *Queries) UpsertCard(ctx context.Context, arg UpsertCardParams) (Card, error) {
 	row := q.db.QueryRow(ctx, upsertCard,
 		arg.ID,
@@ -45,6 +99,7 @@ func (q *Queries) UpsertCard(ctx context.Context, arg UpsertCardParams) (Card, e
 		arg.ScryfallID,
 		arg.ImageUris,
 		arg.Finishes,
+		arg.McmID,
 	)
 	var i Card
 	err := row.Scan(
@@ -57,6 +112,10 @@ func (q *Queries) UpsertCard(ctx context.Context, arg UpsertCardParams) (Card, e
 		&i.ImageUris,
 		&i.Finishes,
 		&i.CreatedAt,
+		&i.McmID,
+		&i.PriceEur,
+		&i.PriceFoilEur,
+		&i.PricedAt,
 	)
 	return i, err
 }

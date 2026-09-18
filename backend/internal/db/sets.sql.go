@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getSetPackImage = `-- name: GetSetPackImage :one
@@ -20,27 +22,86 @@ func (q *Queries) GetSetPackImage(ctx context.Context, code string) ([]byte, err
 	return pack_image, err
 }
 
+const listSetsWithMcmID = `-- name: ListSetsWithMcmID :many
+SELECT code, mcm_id FROM sets WHERE mcm_id IS NOT NULL
+`
+
+type ListSetsWithMcmIDRow struct {
+	Code  string      `json:"code"`
+	McmID pgtype.Int4 `json:"mcm_id"`
+}
+
+func (q *Queries) ListSetsWithMcmID(ctx context.Context) ([]ListSetsWithMcmIDRow, error) {
+	rows, err := q.db.Query(ctx, listSetsWithMcmID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSetsWithMcmIDRow
+	for rows.Next() {
+		var i ListSetsWithMcmIDRow
+		if err := rows.Scan(&i.Code, &i.McmID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSetPackPrice = `-- name: UpdateSetPackPrice :exec
+UPDATE sets SET pack_price_eur = $2, pack_priced_at = $3 WHERE code = $1
+`
+
+type UpdateSetPackPriceParams struct {
+	Code         string             `json:"code"`
+	PackPriceEur pgtype.Float8      `json:"pack_price_eur"`
+	PackPricedAt pgtype.Timestamptz `json:"pack_priced_at"`
+}
+
+func (q *Queries) UpdateSetPackPrice(ctx context.Context, arg UpdateSetPackPriceParams) error {
+	_, err := q.db.Exec(ctx, updateSetPackPrice, arg.Code, arg.PackPriceEur, arg.PackPricedAt)
+	return err
+}
+
 const upsertSet = `-- name: UpsertSet :one
-INSERT INTO sets (code, name, pack_image)
-VALUES ($1, $2, $3)
-ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, pack_image = EXCLUDED.pack_image
-RETURNING code, name, created_at, pack_image
+INSERT INTO sets (code, name, pack_image, mcm_id)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (code) DO UPDATE SET
+    name       = EXCLUDED.name,
+    pack_image = EXCLUDED.pack_image,
+    mcm_id     = COALESCE(EXCLUDED.mcm_id, sets.mcm_id)
+RETURNING code, name, created_at, pack_image, mcm_id, pack_price_eur, pack_priced_at
 `
 
 type UpsertSetParams struct {
-	Code      string `json:"code"`
-	Name      string `json:"name"`
-	PackImage []byte `json:"pack_image"`
+	Code      string      `json:"code"`
+	Name      string      `json:"name"`
+	PackImage []byte      `json:"pack_image"`
+	McmID     pgtype.Int4 `json:"mcm_id"`
 }
 
+// mcm_id is COALESCEd so re-importing a set as a *source* set (e.g. SPG
+// pulled in by FDN's booster, with no sealed product of its own) doesn't
+// wipe the id a previous primary import stored.
 func (q *Queries) UpsertSet(ctx context.Context, arg UpsertSetParams) (Set, error) {
-	row := q.db.QueryRow(ctx, upsertSet, arg.Code, arg.Name, arg.PackImage)
+	row := q.db.QueryRow(ctx, upsertSet,
+		arg.Code,
+		arg.Name,
+		arg.PackImage,
+		arg.McmID,
+	)
 	var i Set
 	err := row.Scan(
 		&i.Code,
 		&i.Name,
 		&i.CreatedAt,
 		&i.PackImage,
+		&i.McmID,
+		&i.PackPriceEur,
+		&i.PackPricedAt,
 	)
 	return i, err
 }

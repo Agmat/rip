@@ -28,6 +28,10 @@ type Card struct {
 	ImageUris       []byte             `json:"image_uris"`
 	Finishes        []string           `json:"finishes"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	McmID           pgtype.Int4        `json:"mcm_id"`
+	PriceEur        pgtype.Float8      `json:"price_eur"`
+	PriceFoilEur    pgtype.Float8      `json:"price_foil_eur"`
+	PricedAt        pgtype.Timestamptz `json:"priced_at"`
 }
 
 type PackOpen struct {
@@ -47,8 +51,11 @@ type PackOpenCard struct {
 }
 
 type Set struct {
-	Code      string             `json:"code"`
-	Name      string             `json:"name"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	PackImage []byte             `json:"pack_image"`
+	Code         string             `json:"code"`
+	Name         string             `json:"name"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	PackImage    []byte             `json:"pack_image"`
+	McmID        pgtype.Int4        `json:"mcm_id"`
+	PackPriceEur pgtype.Float8      `json:"pack_price_eur"`
+	PackPricedAt pgtype.Timestamptz `json:"pack_priced_at"`
 }

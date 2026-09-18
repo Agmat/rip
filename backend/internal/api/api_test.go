@@ -58,6 +58,12 @@ func TestListSets(t *testing.T) {
 	if len(resp.Sets[0].BoosterTypes) != 1 || resp.Sets[0].BoosterTypes[0] != "play" {
 		t.Errorf("booster types = %v, want [play]", resp.Sets[0].BoosterTypes)
 	}
+	if resp.Sets[0].PackPriceEUR == nil || *resp.Sets[0].PackPriceEUR != 4.36 {
+		t.Errorf("pack_price_eur = %v, want 4.36", resp.Sets[0].PackPriceEUR)
+	}
+	if resp.Sets[0].PackPricedAt == nil {
+		t.Error("pack_priced_at is nil, want the seeded refresh time")
+	}
 }
 
 func TestOpenPack_And_GetPack_RoundTrip(t *testing.T) {
@@ -75,6 +81,32 @@ func TestOpenPack_And_GetPack_RoundTrip(t *testing.T) {
 	// The fixture's one variant draws exactly 1 card from each of 6 sheets.
 	if len(opened.Cards) != 6 {
 		t.Fatalf("len(Cards) = %d, want 6", len(opened.Cards))
+	}
+	if opened.Pricing.PackPriceEUR == nil || *opened.Pricing.PackPriceEUR != 4.36 {
+		t.Errorf("pricing.pack_price_eur = %v, want 4.36", opened.Pricing.PackPriceEUR)
+	}
+	// The draw is random, so check the summary against the picks it came with
+	// rather than a fixed total.
+	var wantTotal float64
+	var wantUnpriced int
+	for _, c := range opened.Cards {
+		if c.PriceEUR == nil {
+			wantUnpriced++
+			continue
+		}
+		wantTotal += *c.PriceEUR
+	}
+	if opened.Pricing.TotalValueEUR != round2(wantTotal) {
+		t.Errorf("pricing.total_value_eur = %v, want %v", opened.Pricing.TotalValueEUR, round2(wantTotal))
+	}
+	if opened.Pricing.UnpricedCards != wantUnpriced {
+		t.Errorf("pricing.unpriced_cards = %d, want %d", opened.Pricing.UnpricedCards, wantUnpriced)
+	}
+	if wantUnpriced == 0 {
+		t.Error("fixture should leave at least one pick unpriced (only one card is priced)")
+	}
+	if opened.Pricing.PricedAt == nil {
+		t.Error("pricing.priced_at is nil, want the seeded refresh time")
 	}
 	for _, c := range opened.Cards {
 		if c.Card.Name == "" {

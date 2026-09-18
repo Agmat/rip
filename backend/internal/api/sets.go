@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -11,10 +12,12 @@ import (
 )
 
 type setSummary struct {
-	Code         string   `json:"code"`
-	Name         string   `json:"name"`
-	PackImageURL *string  `json:"pack_image_url"`
-	BoosterTypes []string `json:"booster_types"`
+	Code         string     `json:"code"`
+	Name         string     `json:"name"`
+	PackImageURL *string    `json:"pack_image_url"`
+	PackPriceEUR *float64   `json:"pack_price_eur"` // Cardmarket trend price of one sealed booster; nil if unpriced
+	PackPricedAt *time.Time `json:"pack_priced_at"`
+	BoosterTypes []string   `json:"booster_types"`
 }
 
 func (s *Server) handleListSets(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +42,8 @@ func (s *Server) handleListSets(w http.ResponseWriter, r *http.Request) {
 				Code:         row.SetCode,
 				Name:         row.SetName,
 				PackImageURL: packImageURLPath(row.SetCode, row.PackImageHash),
+				PackPriceEUR: nullableFloat(row.PackPriceEur),
+				PackPricedAt: nullableTime(row.PackPricedAt),
 			})
 		}
 		sets[i].BoosterTypes = append(sets[i].BoosterTypes, row.BoosterType)
