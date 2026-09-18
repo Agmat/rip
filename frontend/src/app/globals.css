@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
 /*
- * Fixed dark background for now (not following prefers-color-scheme) -
- * the design pass will replace this with the real palette; this is just
- * "basic and functional" per the current milestone.
+ * card-shop counter: warm charcoal room, the foil pack is the only bright
+ * surface. Rarity colors follow Magic's own convention.
  */
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --bg: #171512;
+  --surface: #221f1b;
+  --ink: #ece6dc;
+  --muted: #8f877c;
+  --rarity-common: #a0a0a0;
+  --rarity-uncommon: #b9c6cf;
+  --rarity-rare: #d4a63a;
+  --rarity-mythic: #e4622a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-barlow);
+  --font-display: var(--font-barlow-condensed);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+}
+
+/* --- pack --- */
+/* Real product photography (TCGplayer-hotlinked), not drawn. The 21/40
+ * aspect ratio matches the standard Play Booster pack photo; object-fit:
+ * contain keeps a differently-shaped future photo from ever distorting,
+ * it would just letterbox instead of filling the frame. */
+
+.pack {
+  position: relative;
+  width: min(60vw, 220px);
+  aspect-ratio: 21 / 40;
+  filter: drop-shadow(0 20px 32px rgba(0, 0, 0, 0.55));
+  transform: perspective(800px) rotateX(calc((0.5 - var(--my, 0.5)) * 10deg))
+    rotateY(calc((var(--mx, 0.5) - 0.5) * 10deg));
+  transition: transform 150ms ease-out;
+  touch-action: none;
+}
+
+.pack-half {
+  position: absolute;
+  inset: 0;
+}
+
+.pack-half img {
+  object-fit: contain;
+}
+
+/* Both halves show the full image at full size; the clip is what makes
+ * each one read as its half. Untorn, stacked exactly, they look like one
+ * uncut photo - clipped with a hair of overlap at the seam so sub-pixel
+ * rounding never leaves a visible gap. */
+.pack-half.top {
+  clip-path: inset(0 0 49% 0);
+}
+
+.pack-half.bottom {
+  clip-path: inset(49% 0 0 0);
+}
+
+.pack.tearing .pack-half.top {
+  animation: tear-half-top 500ms ease-in forwards;
+}
+
+.pack.tearing .pack-half.bottom {
+  animation: tear-half-bottom 500ms ease-in forwards;
+}
+
+@keyframes tear-half-top {
+  to {
+    transform: translateY(-35%) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+@keyframes tear-half-bottom {
+  to {
+    transform: translateY(35%) rotate(6deg);
+    opacity: 0;
+  }
+}
+
+.pack-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  border: 1px dashed var(--surface);
+  border-radius: 8px;
+}
+
+.pack-fallback .pack-name {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack {
+    transform: none !important;
+    transition: none !important;
+  }
+  .pack.tearing .pack-half.top,
+  .pack.tearing .pack-half.bottom {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
+/* --- controls --- */
+
+.pack-arrow {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--surface);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pack-arrow:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.pack-arrow:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.rip-button {
+  border-radius: 6px;
+  padding: 0.75rem 1.75rem;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.rip-button:disabled {
+  opacity: 0.5;
+}
+
+.rip-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 @keyframes reveal {

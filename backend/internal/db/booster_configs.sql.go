@@ -83,7 +83,7 @@ func (q *Queries) InsertBoosterConfig(ctx context.Context, arg InsertBoosterConf
 }
 
 const listActiveBoosterConfigsWithSetName = `-- name: ListActiveBoosterConfigsWithSetName :many
-SELECT bc.set_code, s.name AS set_name, bc.booster_type
+SELECT bc.set_code, s.name AS set_name, COALESCE(md5(s.pack_image), '')::text AS pack_image_hash, bc.booster_type
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code
 WHERE bc.is_active
@@ -91,11 +91,15 @@ ORDER BY bc.set_code, bc.booster_type
 `
 
 type ListActiveBoosterConfigsWithSetNameRow struct {
-	SetCode     string `json:"set_code"`
-	SetName     string `json:"set_name"`
-	BoosterType string `json:"booster_type"`
+	SetCode       string `json:"set_code"`
+	SetName       string `json:"set_name"`
+	PackImageHash string `json:"pack_image_hash"`
+	BoosterType   string `json:"booster_type"`
 }
 
+// md5(NULL) is NULL, and sqlc types this column as non-nullable text, so
+// COALESCE to "" (treated as "no pack image" in Go) rather than let a set
+// with no image fail to scan.
 func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]ListActiveBoosterConfigsWithSetNameRow, error) {
 	rows, err := q.db.Query(ctx, listActiveBoosterConfigsWithSetName)
 	if err != nil {
@@ -105,7 +109,12 @@ func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]Li
 	var items []ListActiveBoosterConfigsWithSetNameRow
 	for rows.Next() {
 		var i ListActiveBoosterConfigsWithSetNameRow
-		if err := rows.Scan(&i.SetCode, &i.SetName, &i.BoosterType); err != nil {
+		if err := rows.Scan(
+			&i.SetCode,
+			&i.SetName,
+			&i.PackImageHash,
+			&i.BoosterType,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

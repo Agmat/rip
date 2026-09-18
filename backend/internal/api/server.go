@@ -32,6 +32,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /v1/sets", s.handleListSets)
+	mux.HandleFunc("GET /v1/sets/{code}/pack.png", s.handleGetSetPackImage)
 	mux.HandleFunc("POST /v1/packs/open", s.handleOpenPack)
 	mux.HandleFunc("GET /v1/packs/{id}", s.handleGetPack)
 	return mux

@@ -39,3 +39,8 @@ export function openPack(setCode: string, boosterType?: string): Promise<PackOpe
     body: JSON.stringify({ set_code: setCode, booster_type: boosterType }),
   });
 }
+
+/** SetSummary.pack_image_url is a path on this API, not a full URL. */
+export function packImageSrc(path: string): string {
+  return `${API_URL}${path}`;
+}

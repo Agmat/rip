@@ -1,6 +1,15 @@
 import Image from "next/image";
-import type { CardPick } from "@/lib/types";
+import type { CardPick, CardSummary } from "@/lib/types";
 import { primaryImage } from "@/lib/types";
+
+const RARITY_COLOR: Record<CardSummary["rarity"], string> = {
+  common: "var(--rarity-common)",
+  uncommon: "var(--rarity-uncommon)",
+  rare: "var(--rarity-rare)",
+  mythic: "var(--rarity-mythic)",
+  special: "var(--rarity-mythic)",
+  bonus: "var(--rarity-mythic)",
+};
 
 export default function CardTile({ pick, index }: { pick: CardPick; index: number }) {
   const src = primaryImage(pick.card.image_uris);
@@ -20,12 +29,12 @@ export default function CardTile({ pick, index }: { pick: CardPick; index: numbe
           unoptimized
         />
       ) : (
-        <div className="flex h-[340px] w-[244px] items-center justify-center rounded-lg bg-neutral-800 text-sm text-neutral-400">
+        <div className="flex h-[340px] w-[244px] items-center justify-center rounded-lg bg-surface text-sm text-muted">
           no image
         </div>
       )}
-      <p className="text-sm text-neutral-200">{pick.card.name}</p>
-      <p className="text-xs uppercase text-neutral-400">
+      <p className="text-sm text-ink">{pick.card.name}</p>
+      <p className="text-xs" style={{ color: RARITY_COLOR[pick.card.rarity] }}>
         {pick.card.rarity}
         {pick.foil ? " · foil" : ""}
       </p>

@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
   subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -21,13 +23,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${barlow.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-neutral-950 text-neutral-100">
+      <body className="min-h-full flex flex-col">
+        <header className="p-4">
+          <span className="display text-lg">rip</span>
+        </header>
         <main className="flex flex-1 flex-col items-center justify-center gap-8 p-6">
           {children}
         </main>
-        <footer className="p-4 text-center text-xs text-neutral-500">
+        <footer className="p-4 text-center text-xs text-muted">
           rip is unofficial Fan Content permitted under the Fan Content Policy. Not
           approved/endorsed by Wizards. Portions of the materials used are property of
           Wizards of the Coast. ©Wizards of the Coast LLC.

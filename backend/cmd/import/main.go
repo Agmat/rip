@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -75,6 +76,17 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 		return fmt.Errorf("set %s has no %q booster", setCode, boosterType)
 	}
 
+	var packImage []byte
+	if packImgURL, ok := packImageURL(primary, boosterType); !ok {
+		slog.Warn("no TCGplayer pack image found, importing without one", "set", setCode, "booster_type", boosterType)
+	} else if img, err := imp.fetchPackImage(ctx, packImgURL); err != nil {
+		// Decorative art must never block getting the cards in - any
+		// failure here (fetch, decode, process) is a warning, not an error.
+		slog.Warn("failed to fetch/process pack image, importing without one", "set", setCode, "error", err)
+	} else {
+		packImage = img
+	}
+
 	setFiles, err := imp.fetchSourceSets(ctx, primary, boosterCfg)
 	if err != nil {
 		return err
@@ -116,7 +128,7 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 
 	q := db.New(tx)
 
-	if err := upsertSets(ctx, q, setFiles); err != nil {
+	if err := upsertSets(ctx, q, setFiles, primary.Data.Code, packImage); err != nil {
 		return err
 	}
 	if err := upsertCards(ctx, q, neededUUIDs, cardsByUUID, scryfallByID); err != nil {
@@ -171,13 +183,57 @@ func sheetCardUUIDs(cfg mtgjson.BoosterConfig) []string {
 	return uuids
 }
 
-func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile) error {
+// upsertSets stores every fetched set (the primary plus any booster source
+// sets, e.g. FDN's play booster also drawing from SPG). Only the primary -
+// the one whose pack is actually opened - gets a pack image; source sets
+// aren't themselves an openable product.
+func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile, primaryCode string, primaryPackImage []byte) error {
 	for _, sf := range setFiles {
-		if _, err := q.UpsertSet(ctx, db.UpsertSetParams{Code: sf.Data.Code, Name: sf.Data.Name}); err != nil {
+		params := db.UpsertSetParams{Code: sf.Data.Code, Name: sf.Data.Name}
+		if sf.Data.Code == primaryCode {
+			params.PackImage = primaryPackImage
+		}
+		if _, err := q.UpsertSet(ctx, params); err != nil {
 			return fmt.Errorf("upsert set %s: %w", sf.Data.Code, err)
 		}
 	}
 	return nil
+}
+
+// fetchPackImage downloads the product photo at url and removes its studio
+// background (see packart.go).
+func (imp *importer) fetchPackImage(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := imp.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+	return removeWhiteBackground(body)
+}
+
+// packImageURL finds the set's booster pack product (MTGJSON sealedProduct
+// entry with category "booster_pack" and a matching subtype) and resolves
+// it to the product's real photo via TCGplayer's public image CDN - neither
+// MTGJSON nor Scryfall hosts pack art. false if the set has no such listing;
+// callers should treat that as non-fatal (decorative, not draw-affecting).
+func packImageURL(sf *mtgjson.SetFile, boosterType string) (string, bool) {
+	for _, p := range sf.Data.SealedProduct {
+		if p.Category == "booster_pack" && p.Subtype == boosterType && p.Identifiers.TCGplayerProductID != "" {
+			return fmt.Sprintf("https://product-images.tcgplayer.com/fit-in/600x600/%s.jpg", p.Identifiers.TCGplayerProductID), true
+		}
+	}
+	return "", false
 }
 
 func upsertCards(ctx context.Context, q *db.Queries, uuids []string, cardsByUUID map[string]mtgjson.Card, scryfallByID map[string]scryfall.Card) error {

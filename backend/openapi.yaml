@@ -98,6 +98,38 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
+  /v1/sets/{code}/pack.png:
+    get:
+      summary: Fetch a set's booster pack photo
+      description: >
+        The official pack photo with its studio background removed,
+        processed and served by this API (not the external source it was
+        derived from). Cacheable indefinitely: the URL's ?v= changes
+        whenever the image does.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            example: FDN
+        - name: v
+          in: query
+          required: false
+          description: Cache-buster; ignored by the server.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/Error"
+
 components:
   responses:
     Error:
@@ -130,6 +162,14 @@ components:
         name:
           type: string
           example: Foundations
+        pack_image_url:
+          type: string
+          nullable: true
+          description: >
+            Path to this API's own GET /v1/sets/{code}/pack.png (with a
+            content-hash ?v= query param), not an external URL. Null if
+            this set has no pack photo.
+          example: /v1/sets/FDN/pack.png?v=4f43e42d64dbc9534c49500f8275e2c2
         booster_types:
           type: array
           items:
