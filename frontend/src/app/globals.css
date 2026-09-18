@@ -125,6 +125,17 @@ body {
 
 /* --- controls --- */
 
+/* Tailwind's preflight leaves <button> at the native `cursor: default` (it
+ * never sets `pointer`), so every button in the app needs this - fixed
+ * once here rather than per button class. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 .pack-arrow {
   width: 2.25rem;
   height: 2.25rem;
