@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deactivateBoosterConfigs = `-- name: DeactivateBoosterConfigs :exec
@@ -83,7 +85,8 @@ func (q *Queries) InsertBoosterConfig(ctx context.Context, arg InsertBoosterConf
 }
 
 const listActiveBoosterConfigsWithSetName = `-- name: ListActiveBoosterConfigsWithSetName :many
-SELECT bc.set_code, s.name AS set_name, COALESCE(md5(s.pack_image), '')::text AS pack_image_hash, bc.booster_type
+SELECT bc.set_code, s.name AS set_name, COALESCE(md5(s.pack_image), '')::text AS pack_image_hash, bc.booster_type,
+       s.pack_price_eur, s.pack_priced_at
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code
 WHERE bc.is_active
@@ -91,10 +94,12 @@ ORDER BY bc.set_code, bc.booster_type
 `
 
 type ListActiveBoosterConfigsWithSetNameRow struct {
-	SetCode       string `json:"set_code"`
-	SetName       string `json:"set_name"`
-	PackImageHash string `json:"pack_image_hash"`
-	BoosterType   string `json:"booster_type"`
+	SetCode       string             `json:"set_code"`
+	SetName       string             `json:"set_name"`
+	PackImageHash string             `json:"pack_image_hash"`
+	BoosterType   string             `json:"booster_type"`
+	PackPriceEur  pgtype.Float8      `json:"pack_price_eur"`
+	PackPricedAt  pgtype.Timestamptz `json:"pack_priced_at"`
 }
 
 // md5(NULL) is NULL, and sqlc types this column as non-nullable text, so
@@ -114,6 +119,8 @@ func (q *Queries) ListActiveBoosterConfigsWithSetName(ctx context.Context) ([]Li
 			&i.SetName,
 			&i.PackImageHash,
 			&i.BoosterType,
+			&i.PackPriceEur,
+			&i.PackPricedAt,
 		); err != nil {
 			return nil, err
 		}

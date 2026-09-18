@@ -12,9 +12,11 @@ import (
 )
 
 const getPackOpen = `-- name: GetPackOpen :one
-SELECT po.id, po.created_at, bc.set_code, bc.booster_type, bc.version AS config_version
+SELECT po.id, po.created_at, bc.set_code, bc.booster_type, bc.version AS config_version,
+       s.pack_price_eur, s.pack_priced_at
 FROM pack_opens po
 JOIN booster_configs bc ON bc.id = po.booster_config_id
+JOIN sets s ON s.code = bc.set_code
 WHERE po.id = $1
 `
 
@@ -24,6 +26,8 @@ type GetPackOpenRow struct {
 	SetCode       string             `json:"set_code"`
 	BoosterType   string             `json:"booster_type"`
 	ConfigVersion int32              `json:"config_version"`
+	PackPriceEur  pgtype.Float8      `json:"pack_price_eur"`
+	PackPricedAt  pgtype.Timestamptz `json:"pack_priced_at"`
 }
 
 func (q *Queries) GetPackOpen(ctx context.Context, id pgtype.UUID) (GetPackOpenRow, error) {
@@ -35,6 +39,8 @@ func (q *Queries) GetPackOpen(ctx context.Context, id pgtype.UUID) (GetPackOpenR
 		&i.SetCode,
 		&i.BoosterType,
 		&i.ConfigVersion,
+		&i.PackPriceEur,
+		&i.PackPricedAt,
 	)
 	return i, err
 }
@@ -90,7 +96,8 @@ func (q *Queries) InsertPackOpenCard(ctx context.Context, arg InsertPackOpenCard
 
 const listPackOpenCards = `-- name: ListPackOpenCards :many
 SELECT poc.slot, poc.sheet_name, poc.foil,
-       c.id AS card_id, c.name, c.rarity, c.collector_number, c.set_code, c.image_uris
+       c.id AS card_id, c.name, c.rarity, c.collector_number, c.set_code, c.image_uris,
+       c.price_eur, c.price_foil_eur, c.priced_at
 FROM pack_open_cards poc
 JOIN cards c ON c.id = poc.card_id
 WHERE poc.pack_open_id = $1
@@ -98,15 +105,18 @@ ORDER BY poc.slot
 `
 
 type ListPackOpenCardsRow struct {
-	Slot            int32       `json:"slot"`
-	SheetName       string      `json:"sheet_name"`
-	Foil            bool        `json:"foil"`
-	CardID          pgtype.UUID `json:"card_id"`
-	Name            string      `json:"name"`
-	Rarity          string      `json:"rarity"`
-	CollectorNumber string      `json:"collector_number"`
-	SetCode         string      `json:"set_code"`
-	ImageUris       []byte      `json:"image_uris"`
+	Slot            int32              `json:"slot"`
+	SheetName       string             `json:"sheet_name"`
+	Foil            bool               `json:"foil"`
+	CardID          pgtype.UUID        `json:"card_id"`
+	Name            string             `json:"name"`
+	Rarity          string             `json:"rarity"`
+	CollectorNumber string             `json:"collector_number"`
+	SetCode         string             `json:"set_code"`
+	ImageUris       []byte             `json:"image_uris"`
+	PriceEur        pgtype.Float8      `json:"price_eur"`
+	PriceFoilEur    pgtype.Float8      `json:"price_foil_eur"`
+	PricedAt        pgtype.Timestamptz `json:"priced_at"`
 }
 
 func (q *Queries) ListPackOpenCards(ctx context.Context, packOpenID pgtype.UUID) ([]ListPackOpenCardsRow, error) {
@@ -128,6 +138,9 @@ func (q *Queries) ListPackOpenCards(ctx context.Context, packOpenID pgtype.UUID)
 			&i.CollectorNumber,
 			&i.SetCode,
 			&i.ImageUris,
+			&i.PriceEur,
+			&i.PriceFoilEur,
+			&i.PricedAt,
 		); err != nil {
 			return nil, err
 		}
