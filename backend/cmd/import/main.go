@@ -1,7 +1,8 @@
 // Command import loads one MTG set's play booster into the database:
-// booster composition from MTGJSON, card images from Scryfall. Re-running
-// it for a set that's already imported creates a new booster_configs
-// version rather than mutating the old one, and upserts card rows in place.
+// booster composition from MTGJSON, card images from Scryfall, prices from
+// Cardmarket. Re-running it for a set that's already imported creates a
+// new booster_configs version rather than mutating the old one, and
+// upserts card rows in place.
 package main
 
 import (
@@ -13,14 +14,17 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Agmat/rip/backend/internal/cardmarket"
 	"github.com/Agmat/rip/backend/internal/config"
 	"github.com/Agmat/rip/backend/internal/db"
 	"github.com/Agmat/rip/backend/internal/mtgjson"
+	"github.com/Agmat/rip/backend/internal/prices"
 	"github.com/Agmat/rip/backend/internal/scryfall"
 )
 
@@ -46,7 +50,7 @@ func run(args []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
@@ -128,7 +132,7 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 
 	q := db.New(tx)
 
-	if err := upsertSets(ctx, q, setFiles, primary.Data.Code, packImage); err != nil {
+	if err := upsertSets(ctx, q, setFiles, primary.Data.Code, packImage, packMCMID(primary, boosterType)); err != nil {
 		return err
 	}
 	if err := upsertCards(ctx, q, neededUUIDs, cardsByUUID, scryfallByID); err != nil {
@@ -144,6 +148,15 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 	}
 
 	slog.Info("import complete", "set", setCode, "booster_type", boosterType, "version", version, "cards", len(neededUUIDs))
+
+	// Price what was just imported. Non-fatal: the set is fully usable
+	// unpriced, and `make prices` can be re-run at any time.
+	st, err := prices.Refresh(ctx, pool, imp.httpClient, cardmarket.DefaultPriceGuideURL)
+	if err != nil {
+		slog.Warn("price refresh failed, set imported without prices", "set", setCode, "error", err)
+		return nil
+	}
+	slog.Info("prices refreshed", "cards", st.Cards, "cards_missing", st.CardsMissing, "sets", st.Sets, "sets_missing", st.SetsMissing)
 	return nil
 }
 
@@ -185,13 +198,14 @@ func sheetCardUUIDs(cfg mtgjson.BoosterConfig) []string {
 
 // upsertSets stores every fetched set (the primary plus any booster source
 // sets, e.g. FDN's play booster also drawing from SPG). Only the primary -
-// the one whose pack is actually opened - gets a pack image; source sets
-// aren't themselves an openable product.
-func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile, primaryCode string, primaryPackImage []byte) error {
+// the one whose pack is actually opened - gets a pack image and a
+// Cardmarket product id; source sets aren't themselves an openable product.
+func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile, primaryCode string, primaryPackImage []byte, primaryMCMID pgtype.Int4) error {
 	for _, sf := range setFiles {
 		params := db.UpsertSetParams{Code: sf.Data.Code, Name: sf.Data.Name}
 		if sf.Data.Code == primaryCode {
 			params.PackImage = primaryPackImage
+			params.McmID = primaryMCMID
 		}
 		if _, err := q.UpsertSet(ctx, params); err != nil {
 			return fmt.Errorf("upsert set %s: %w", sf.Data.Code, err)
@@ -236,6 +250,29 @@ func packImageURL(sf *mtgjson.SetFile, boosterType string) (string, bool) {
 	return "", false
 }
 
+// packMCMID finds the Cardmarket product id of the set's booster pack (same
+// sealedProduct lookup as packImageURL), or NULL if the set has no such
+// listing - the pack is then simply unpriced.
+func packMCMID(sf *mtgjson.SetFile, boosterType string) pgtype.Int4 {
+	for _, p := range sf.Data.SealedProduct {
+		if p.Category == "booster_pack" && p.Subtype == boosterType {
+			return mcmID(p.Identifiers.MCMID)
+		}
+	}
+	return pgtype.Int4{}
+}
+
+// mcmID parses MTGJSON's string-encoded mcmId into a nullable int. Empty
+// or malformed ids become NULL rather than failing the import: a missing
+// price must never block getting the cards in.
+func mcmID(s string) pgtype.Int4 {
+	n, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(n), Valid: true}
+}
+
 func upsertCards(ctx context.Context, q *db.Queries, uuids []string, cardsByUUID map[string]mtgjson.Card, scryfallByID map[string]scryfall.Card) error {
 	for _, uuid := range uuids {
 		mCard := cardsByUUID[uuid]
@@ -267,6 +304,7 @@ func upsertCards(ctx context.Context, q *db.Queries, uuids []string, cardsByUUID
 			ScryfallID:      scryfallID,
 			ImageUris:       imageUris,
 			Finishes:        mCard.Finishes,
+			McmID:           mcmID(mCard.Identifiers.MCMID),
 		})
 		if err != nil {
 			return fmt.Errorf("upsert card %s: %w", mCard.Name, err)
