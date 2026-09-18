@@ -47,8 +47,8 @@ type PackOpenCard struct {
 }
 
 type Set struct {
-	Code         string             `json:"code"`
-	Name         string             `json:"name"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	PackImageUrl pgtype.Text        `json:"pack_image_url"`
+	Code      string             `json:"code"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	PackImage []byte             `json:"pack_image"`
 }

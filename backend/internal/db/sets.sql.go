@@ -7,31 +7,40 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getSetPackImage = `-- name: GetSetPackImage :one
+SELECT pack_image FROM sets WHERE code = $1
+`
+
+func (q *Queries) GetSetPackImage(ctx context.Context, code string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getSetPackImage, code)
+	var pack_image []byte
+	err := row.Scan(&pack_image)
+	return pack_image, err
+}
+
 const upsertSet = `-- name: UpsertSet :one
-INSERT INTO sets (code, name, pack_image_url)
+INSERT INTO sets (code, name, pack_image)
 VALUES ($1, $2, $3)
-ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, pack_image_url = EXCLUDED.pack_image_url
-RETURNING code, name, created_at, pack_image_url
+ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, pack_image = EXCLUDED.pack_image
+RETURNING code, name, created_at, pack_image
 `
 
 type UpsertSetParams struct {
-	Code         string      `json:"code"`
-	Name         string      `json:"name"`
-	PackImageUrl pgtype.Text `json:"pack_image_url"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	PackImage []byte `json:"pack_image"`
 }
 
 func (q *Queries) UpsertSet(ctx context.Context, arg UpsertSetParams) (Set, error) {
-	row := q.db.QueryRow(ctx, upsertSet, arg.Code, arg.Name, arg.PackImageUrl)
+	row := q.db.QueryRow(ctx, upsertSet, arg.Code, arg.Name, arg.PackImage)
 	var i Set
 	err := row.Scan(
 		&i.Code,
 		&i.Name,
 		&i.CreatedAt,
-		&i.PackImageUrl,
+		&i.PackImage,
 	)
 	return i, err
 }
