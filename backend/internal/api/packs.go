@@ -27,12 +27,14 @@ type packOpenResponse struct {
 	ConfigVersion int32              `json:"config_version"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	Cards         []cardPick         `json:"cards"`
+	Pricing       pricing            `json:"pricing"`
 }
 
 type cardPick struct {
 	Slot      int32       `json:"slot"`
 	SheetName string      `json:"sheet_name"`
 	Foil      bool        `json:"foil"`
+	PriceEUR  *float64    `json:"price_eur"` // effective price for this pick (foil-aware); nil if unpriced
 	Card      cardSummary `json:"card"`
 }
 
@@ -52,6 +54,7 @@ func assemblePackResponse(po db.GetPackOpenRow, cardRows []db.ListPackOpenCardsR
 			Slot:      row.Slot,
 			SheetName: row.SheetName,
 			Foil:      row.Foil,
+			PriceEUR:  pickPrice(row.Foil, row.PriceEur, row.PriceFoilEur),
 			Card: cardSummary{
 				ID:              row.CardID,
 				Name:            row.Name,
@@ -69,6 +72,7 @@ func assemblePackResponse(po db.GetPackOpenRow, cardRows []db.ListPackOpenCardsR
 		ConfigVersion: po.ConfigVersion,
 		CreatedAt:     po.CreatedAt,
 		Cards:         cards,
+		Pricing:       summarize(po.PackPriceEur, po.PackPricedAt, cards),
 	}
 }
 
