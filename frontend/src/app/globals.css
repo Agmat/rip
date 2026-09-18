@@ -189,3 +189,13 @@ button:disabled {
     transform: translateY(0);
   }
 }
+
+/* --- reveal --- */
+/* 14 cards as 7×2, sized so both rows + summary + button fit one 16"
+ * screen. Card width derives from the height budget: (viewport - chrome)
+ * split in two rows, × the 244/340 card aspect. Capped at 200px so it
+ * never blows up on tall monitors. */
+.reveal-grid {
+  --card-w: min(200px, calc((100dvh - 26rem) / 2 * 0.7176));
+  max-width: calc(7 * var(--card-w) + 6 * 0.75rem);
+}

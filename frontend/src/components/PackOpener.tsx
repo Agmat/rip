@@ -63,8 +63,8 @@ export default function PackOpener() {
 
   if (pack) {
     return (
-      <div className="flex flex-col items-center gap-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+      <div className="flex flex-col items-center gap-4">
+        <div className="reveal-grid grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {pack.cards.map((pick, i) => (
             <CardTile key={`${pick.slot}-${pick.card.id}`} pick={pick} index={i} />
           ))}

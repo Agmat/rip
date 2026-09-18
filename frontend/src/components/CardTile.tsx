@@ -17,7 +17,7 @@ export default function CardTile({ pick, index }: { pick: CardPick; index: numbe
 
   return (
     <div
-      className="flex flex-col items-center gap-1 opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
+      className="flex flex-col items-center gap-0.5 opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {src ? (
@@ -26,21 +26,23 @@ export default function CardTile({ pick, index }: { pick: CardPick; index: numbe
           alt={pick.card.name}
           width={244}
           height={340}
-          className="rounded-lg"
+          className="h-auto w-full rounded-lg"
           unoptimized
         />
       ) : (
-        <div className="flex h-[340px] w-[244px] items-center justify-center rounded-lg bg-surface text-sm text-muted">
+        <div className="flex aspect-[244/340] w-full items-center justify-center rounded-lg bg-surface text-sm text-muted">
           no image
         </div>
       )}
-      <p className="text-sm text-ink">{pick.card.name}</p>
-      <p className="text-xs" style={{ color: RARITY_COLOR[pick.card.rarity] }}>
-        {pick.card.rarity}
-        {pick.foil ? " · foil" : ""}
-      </p>
-      <p className="text-xs text-muted">
-        {pick.price_eur != null ? formatEUR(pick.price_eur) : "—"}
+      <p className="w-full truncate text-center text-xs text-ink">{pick.card.name}</p>
+      <p className="text-[11px]">
+        <span style={{ color: RARITY_COLOR[pick.card.rarity] }}>
+          {pick.card.rarity}
+          {pick.foil ? " · foil" : ""}
+        </span>{" "}
+        <span className="text-muted">
+          · {pick.price_eur != null ? formatEUR(pick.price_eur) : "—"}
+        </span>
       </p>
     </div>
   );
