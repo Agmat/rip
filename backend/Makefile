@@ -1,4 +1,4 @@
-.PHONY: dev run test lint fmt migrate-up migrate-down sqlc-generate
+.PHONY: dev run prices test lint fmt migrate-up migrate-down sqlc-generate
 
 DATABASE_URL ?= postgres://rip:rip@localhost:5432/rip?sslmode=disable
 
@@ -8,6 +8,9 @@ dev:
 
 run:
 	go run ./cmd/api
+
+prices:
+	go run ./cmd/prices
 
 test:
 	go test -race ./...
