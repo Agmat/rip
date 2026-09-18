@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { formatEUR } from "@/lib/money";
 import type { CardPick, CardSummary } from "@/lib/types";
 import { primaryImage } from "@/lib/types";
 
@@ -37,6 +38,9 @@ export default function CardTile({ pick, index }: { pick: CardPick; index: numbe
       <p className="text-xs" style={{ color: RARITY_COLOR[pick.card.rarity] }}>
         {pick.card.rarity}
         {pick.foil ? " · foil" : ""}
+      </p>
+      <p className="text-xs text-muted">
+        {pick.price_eur != null ? formatEUR(pick.price_eur) : "—"}
       </p>
     </div>
   );
