@@ -5,6 +5,9 @@ export type SetSummary = {
   code: string;
   name: string;
   pack_image_url: string | null;
+  /** Cardmarket trend price of one sealed booster, EUR. Null if unpriced. */
+  pack_price_eur: number | null;
+  pack_priced_at: string | null;
   booster_types: string[];
 };
 
@@ -41,7 +44,16 @@ export type CardPick = {
   slot: number;
   sheet_name: string;
   foil: boolean;
+  /** Foil-aware Cardmarket trend price for this pick, EUR. Null if unpriced. */
+  price_eur: number | null;
   card: CardSummary;
+};
+
+export type Pricing = {
+  pack_price_eur: number | null;
+  total_value_eur: number;
+  unpriced_cards: number;
+  priced_at: string | null;
 };
 
 export type PackOpen = {
@@ -51,6 +63,7 @@ export type PackOpen = {
   config_version: number;
   created_at: string;
   cards: CardPick[];
+  pricing: Pricing;
 };
 
 export type ApiError = {

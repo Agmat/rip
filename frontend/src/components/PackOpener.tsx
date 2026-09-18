@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { listSets, openPack } from "@/lib/api";
+import { formatEUR } from "@/lib/money";
 import type { PackOpen, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
 import Pack from "./Pack";
@@ -98,6 +99,9 @@ export default function PackOpener() {
           </button>
         )}
       </div>
+      {selectedSet.pack_price_eur != null && (
+        <p className="text-sm text-muted">{formatEUR(selectedSet.pack_price_eur)} on Cardmarket</p>
+      )}
       <button onClick={handleRip} disabled={tearing} className="rip-button">
         {tearing ? "ripping…" : "rip pack"}
       </button>
