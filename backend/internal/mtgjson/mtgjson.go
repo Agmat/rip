@@ -68,26 +68,13 @@ type BoosterConfig struct {
 	SourceSetCodes      []string                `json:"sourceSetCodes"`
 }
 
-// SealedProduct is one purchasable product for a set (a booster pack, box,
-// bundle, etc.) as MTGJSON models it. Only enough to find "the play booster
-// pack" and its TCGplayer id, which resolves to the product's real photo -
-// MTGJSON and Scryfall have no pack art of their own.
-type SealedProduct struct {
-	Category    string `json:"category"`
-	Subtype     string `json:"subtype"`
-	Identifiers struct {
-		TCGplayerProductID string `json:"tcgplayerProductId"`
-	} `json:"identifiers"`
-}
-
 // SetFile is the top-level shape of https://mtgjson.com/api/v5/<CODE>.json.
 type SetFile struct {
 	Data struct {
-		Name          string                   `json:"name"`
-		Code          string                   `json:"code"`
-		Cards         []Card                   `json:"cards"`
-		Booster       map[string]BoosterConfig `json:"booster"`
-		SealedProduct []SealedProduct          `json:"sealedProduct"`
+		Name    string                   `json:"name"`
+		Code    string                   `json:"code"`
+		Cards   []Card                   `json:"cards"`
+		Booster map[string]BoosterConfig `json:"booster"`
 	} `json:"data"`
 }
 
