@@ -29,10 +29,13 @@ type Card struct {
 	Identifiers Identifiers `json:"identifiers"`
 }
 
-// Identifiers holds cross-references to other card databases; only the
-// Scryfall id is used here, to join against Scryfall's image data.
+// Identifiers holds cross-references to other card databases: the Scryfall
+// id (joined against Scryfall's image data) and Cardmarket's product id
+// (joined against Cardmarket's price guide). MTGJSON encodes mcmId as a
+// string; it's absent for cards Cardmarket doesn't list.
 type Identifiers struct {
 	ScryfallID string `json:"scryfallId"`
+	MCMID      string `json:"mcmId"`
 }
 
 // BoosterSheet is one named print sheet: a weighted pool of cards a slot is
@@ -70,13 +73,14 @@ type BoosterConfig struct {
 
 // SealedProduct is one purchasable product for a set (a booster pack, box,
 // bundle, etc.) as MTGJSON models it. Only enough to find "the play booster
-// pack" and its TCGplayer id, which resolves to the product's real photo -
-// MTGJSON and Scryfall have no pack art of their own.
+// pack", its TCGplayer id (resolves to the product's real photo) and its
+// Cardmarket id (resolves to its price).
 type SealedProduct struct {
 	Category    string `json:"category"`
 	Subtype     string `json:"subtype"`
 	Identifiers struct {
 		TCGplayerProductID string `json:"tcgplayerProductId"`
+		MCMID              string `json:"mcmId"`
 	} `json:"identifiers"`
 }
 
