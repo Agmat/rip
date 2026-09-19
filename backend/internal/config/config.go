@@ -16,9 +16,10 @@ type Config struct {
 
 // Load reads Config from the environment. DATABASE_URL is required; PORT and
 // LOG_LEVEL fall back to sane defaults so a fresh checkout only needs Postgres
-// to run.
+// to run. DATABASE_URL_POOLED, when set, is preferred for runtime queries
+// (Neon's pooler); migrations keep using the direct DATABASE_URL.
 func Load() (Config, error) {
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := getenvDefault("DATABASE_URL_POOLED", os.Getenv("DATABASE_URL"))
 	if dbURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
 	}

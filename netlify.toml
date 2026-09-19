@@ -1,0 +1,13 @@
+[build]
+  base = "frontend"
+  command = "pnpm build"
+
+[build.environment]
+  # Same-origin: the browser calls /api/..., Netlify proxies it to Fly below.
+  NEXT_PUBLIC_API_URL = "/api"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://rip-mtg-api.fly.dev/:splat"
+  status = 200
+  force = true
