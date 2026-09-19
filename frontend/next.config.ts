@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Fully static: every page prerenders and the API is called from the
+  // browser, so Netlify serves plain files with no server runtime.
+  output: "export",
 };
 
 export default nextConfig;
