@@ -1,6 +1,7 @@
 [build]
   base = "frontend"
   command = "pnpm build"
+  publish = ".next"
 
 [build.environment]
   # Same-origin: the browser calls /api/..., Netlify proxies it to Fly below.
