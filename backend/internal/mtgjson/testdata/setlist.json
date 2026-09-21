@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "code": "FDN",
+      "name": "Foundations",
+      "releaseDate": "2024-11-15",
+      "sealedProduct": [
+        {"category": "booster_box", "subtype": "play", "identifiers": {"tcgplayerProductId": "562118", "mcmId": "781940"}},
+        {"category": "booster_pack", "subtype": "play", "identifiers": {"tcgplayerProductId": "562116", "mcmId": "781936"}}
+      ]
+    },
+    {
+      "code": "FRA",
+      "name": "Future Set",
+      "releaseDate": "2099-01-01",
+      "sealedProduct": [
+        {"category": "booster_pack", "subtype": "play", "identifiers": {"tcgplayerProductId": "999999", "mcmId": "999999"}}
+      ]
+    },
+    {
+      "code": "OLD",
+      "name": "Old Draft-Only Set",
+      "releaseDate": "2020-01-01",
+      "sealedProduct": [
+        {"category": "booster_pack", "subtype": "draft", "identifiers": {"tcgplayerProductId": "111111", "mcmId": "111111"}}
+      ]
+    }
+  ]
+}

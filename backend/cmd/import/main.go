@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -40,35 +41,121 @@ func main() {
 
 func run(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: import <SET_CODE>")
+		return errors.New("usage: import <SET_CODE>|--all")
 	}
-	setCode := args[0]
 
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("create db pool: %w", err)
 	}
 	defer pool.Close()
 
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	imp := &importer{httpClient: &http.Client{Timeout: 30 * time.Second}}
 
-	imp := &importer{httpClient: httpClient}
-	return imp.run(ctx, pool, setCode)
+	if args[0] == "--all" {
+		return imp.runAll(pool)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if err := imp.importSet(ctx, pool, args[0]); err != nil {
+		return err
+	}
+	return imp.refreshPrices(ctx, pool)
 }
 
 type importer struct {
 	httpClient *http.Client
 }
 
-func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string) error {
+// runAll imports every set with a released play booster, oldest first, then
+// refreshes prices once for all of them (the guide is 26 MB; fetching it per
+// set would be wasteful). A single set's failure is logged and doesn't stop
+// the rest; run exits non-zero afterward if any set failed.
+func (imp *importer) runAll(pool *pgxpool.Pool) error {
+	listCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	entries, err := mtgjson.FetchSetList(listCtx, imp.httpClient, mtgjson.DefaultBaseURL)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("fetch set list: %w", err)
+	}
+
+	codes := playBoosterSets(entries, time.Now())
+	slog.Info("bulk import starting", "sets", len(codes))
+
+	var failed int
+	for _, code := range codes {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		err := imp.importSet(ctx, pool, code)
+		cancel()
+		if err != nil {
+			slog.Error("import failed, continuing with remaining sets", "set", code, "error", err)
+			failed++
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if err := imp.refreshPrices(ctx, pool); err != nil {
+		return err
+	}
+
+	if failed > 0 {
+		return fmt.Errorf("bulk import: %d of %d sets failed", failed, len(codes))
+	}
+	return nil
+}
+
+// playBoosterSets returns the codes of every set that has a released
+// booster_pack/boosterType sealed product, oldest release first.
+func playBoosterSets(entries []mtgjson.SetListEntry, now time.Time) []string {
+	type dated struct {
+		code string
+		date time.Time
+	}
+	var sets []dated
+	for _, e := range entries {
+		if !hasPlayBoosterProduct(e.SealedProduct) {
+			continue
+		}
+		date, err := time.Parse("2006-01-02", e.ReleaseDate)
+		if err != nil || date.After(now) {
+			continue
+		}
+		sets = append(sets, dated{code: e.Code, date: date})
+	}
+	sort.Slice(sets, func(i, j int) bool { return sets[i].date.Before(sets[j].date) })
+
+	codes := make([]string, len(sets))
+	for i, s := range sets {
+		codes[i] = s.code
+	}
+	return codes
+}
+
+// hasPlayBoosterProduct reports whether a set has a booster_pack sealed
+// product of boosterType - i.e. whether the ordinary per-set importer will
+// find a booster to import. Shared by playBoosterSets (which sets to bulk
+// import) and packMCMID (that set's Cardmarket product id).
+func hasPlayBoosterProduct(products []mtgjson.SealedProduct) bool {
+	for _, p := range products {
+		if p.Category == "booster_pack" && p.Subtype == boosterType {
+			return true
+		}
+	}
+	return false
+}
+
+// importSet loads one set's play booster: booster composition from MTGJSON,
+// card images from Scryfall, everything committed in one transaction. It
+// does not refresh prices - callers do that once, after all sets they care
+// about are imported.
+func (imp *importer) importSet(ctx context.Context, pool *pgxpool.Pool, setCode string) error {
 	primary, err := mtgjson.FetchSet(ctx, imp.httpClient, mtgjson.DefaultBaseURL, setCode)
 	if err != nil {
 		return err
@@ -131,7 +218,7 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 
 	q := db.New(tx)
 
-	if err := upsertSets(ctx, q, setFiles, primary.Data.Code, packImage, packMCMID(primary, boosterType)); err != nil {
+	if err := upsertSets(ctx, q, setFiles, primary.Data.Code, packImage, packMCMID(primary, boosterType), releaseDate(primary.Data.ReleaseDate)); err != nil {
 		return err
 	}
 	if err := upsertCards(ctx, q, neededUUIDs, cardsByUUID, scryfallByID); err != nil {
@@ -147,14 +234,17 @@ func (imp *importer) run(ctx context.Context, pool *pgxpool.Pool, setCode string
 	}
 
 	slog.Info("import complete", "set", setCode, "booster_type", boosterType, "version", version, "cards", len(neededUUIDs))
+	return nil
+}
 
-	// Price what was just imported. Non-fatal: the set is fully usable
-	// unpriced, and `make prices` can be re-run at any time.
+// refreshPrices prices whatever was just imported. Non-fatal: the set(s)
+// are fully usable unpriced, and `make prices` can be re-run at any time.
+func (imp *importer) refreshPrices(ctx context.Context, pool *pgxpool.Pool) error {
 	// The guide is ~26 MB; the 30s client used for MTGJSON/Scryfall is too tight for it.
 	priceClient := &http.Client{Timeout: 2 * time.Minute}
 	st, err := prices.Refresh(ctx, pool, priceClient, cardmarket.DefaultPriceGuideURL)
 	if err != nil {
-		slog.Warn("price refresh failed, set imported without prices", "set", setCode, "error", err)
+		slog.Warn("price refresh failed, set(s) imported without prices", "error", err)
 		return nil
 	}
 	slog.Info("prices refreshed", "cards", st.Cards, "cards_missing", st.CardsMissing, "sets", st.Sets, "sets_missing", st.SetsMissing)
@@ -199,14 +289,16 @@ func sheetCardUUIDs(cfg mtgjson.BoosterConfig) []string {
 
 // upsertSets stores every fetched set (the primary plus any booster source
 // sets, e.g. FDN's play booster also drawing from SPG). Only the primary -
-// the one whose pack is actually opened - gets a pack image and a
-// Cardmarket product id; source sets aren't themselves an openable product.
-func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile, primaryCode string, primaryPackImage []byte, primaryMCMID pgtype.Int4) error {
+// the one whose pack is actually opened - gets a pack image, a Cardmarket
+// product id and a release date; source sets aren't themselves an openable
+// product.
+func upsertSets(ctx context.Context, q *db.Queries, setFiles []*mtgjson.SetFile, primaryCode string, primaryPackImage []byte, primaryMCMID pgtype.Int4, primaryReleaseDate pgtype.Date) error {
 	for _, sf := range setFiles {
 		params := db.UpsertSetParams{Code: sf.Data.Code, Name: sf.Data.Name}
 		if sf.Data.Code == primaryCode {
 			params.PackImage = primaryPackImage
 			params.McmID = primaryMCMID
+			params.ReleaseDate = primaryReleaseDate
 		}
 		if _, err := q.UpsertSet(ctx, params); err != nil {
 			return fmt.Errorf("upsert set %s: %w", sf.Data.Code, err)
@@ -225,6 +317,17 @@ func packMCMID(sf *mtgjson.SetFile, boosterType string) pgtype.Int4 {
 		}
 	}
 	return pgtype.Int4{}
+}
+
+// releaseDate parses MTGJSON's "YYYY-MM-DD" releaseDate into a nullable
+// date. Empty or malformed dates become NULL - same spirit as mcmID, a
+// missing date must never block getting the cards in.
+func releaseDate(s string) pgtype.Date {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: t, Valid: true}
 }
 
 // mcmID parses MTGJSON's string-encoded mcmId into a nullable int. Empty

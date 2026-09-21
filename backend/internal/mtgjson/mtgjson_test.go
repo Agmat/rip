@@ -80,6 +80,32 @@ func TestFetchSet(t *testing.T) {
 	}
 }
 
+func TestFetchSetList(t *testing.T) {
+	fixture := mustReadFile(t, "testdata/setlist.json")
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	entries, err := mtgjson.FetchSetList(context.Background(), srv.Client(), srv.URL)
+	if err != nil {
+		t.Fatalf("FetchSetList: %v", err)
+	}
+	if gotPath != "/SetList.json" {
+		t.Errorf("request path = %q, want /SetList.json", gotPath)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("len(entries) = %d, want 3", len(entries))
+	}
+	if entries[0].Code != "FDN" || entries[0].ReleaseDate != "2024-11-15" {
+		t.Errorf("entries[0] = %+v, want FDN 2024-11-15", entries[0])
+	}
+}
+
 func TestFetchSet_NotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

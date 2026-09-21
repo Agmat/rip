@@ -25,4 +25,4 @@ SELECT bc.set_code, s.name AS set_name, COALESCE(md5(s.pack_image), '')::text AS
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code
 WHERE bc.is_active
-ORDER BY bc.set_code, bc.booster_type;
+ORDER BY s.release_date DESC NULLS LAST, bc.set_code, bc.booster_type;

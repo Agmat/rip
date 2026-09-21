@@ -58,4 +58,5 @@ type Set struct {
 	McmID        pgtype.Int4        `json:"mcm_id"`
 	PackPriceEur pgtype.Float8      `json:"pack_price_eur"`
 	PackPricedAt pgtype.Timestamptz `json:"pack_priced_at"`
+	ReleaseDate  pgtype.Date        `json:"release_date"`
 }

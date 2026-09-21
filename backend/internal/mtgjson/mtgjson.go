@@ -88,10 +88,21 @@ type SetFile struct {
 	Data struct {
 		Name          string                   `json:"name"`
 		Code          string                   `json:"code"`
+		ReleaseDate   string                   `json:"releaseDate"`
 		Cards         []Card                   `json:"cards"`
 		Booster       map[string]BoosterConfig `json:"booster"`
 		SealedProduct []SealedProduct          `json:"sealedProduct"`
 	} `json:"data"`
+}
+
+// SetListEntry is one entry of https://mtgjson.com/api/v5/SetList.json: enough
+// to decide which sets have a released play booster, without downloading
+// every set's full card data just to find out.
+type SetListEntry struct {
+	Code          string          `json:"code"`
+	Name          string          `json:"name"`
+	ReleaseDate   string          `json:"releaseDate"`
+	SealedProduct []SealedProduct `json:"sealedProduct"`
 }
 
 // ParseSetFile decodes raw JSON as returned by mtgjson.com/api/v5/<CODE>.json.
@@ -133,4 +144,38 @@ func FetchSet(ctx context.Context, client *http.Client, baseURL, code string) (*
 		return nil, fmt.Errorf("set %s: %w", code, err)
 	}
 	return sf, nil
+}
+
+// FetchSetList downloads and decodes mtgjson's index of every set, used to
+// discover which sets exist without fetching each one's full card data.
+func FetchSetList(ctx context.Context, client *http.Client, baseURL string) ([]SetListEntry, error) {
+	url := fmt.Sprintf("%s/SetList.json", baseURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request for set list: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch set list: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch set list: unexpected status %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read set list response: %w", err)
+	}
+
+	var sl struct {
+		Data []SetListEntry `json:"data"`
+	}
+	if err := json.Unmarshal(body, &sl); err != nil {
+		return nil, fmt.Errorf("decode set list: %w", err)
+	}
+	return sl.Data, nil
 }

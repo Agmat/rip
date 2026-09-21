@@ -3,6 +3,7 @@ package main
 import (
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/Agmat/rip/backend/internal/mtgjson"
 )
@@ -39,6 +40,43 @@ func TestMcmID(t *testing.T) {
 	}
 	if got := mcmID("abc"); got.Valid {
 		t.Errorf("mcmID(\"abc\") = %+v, want null", got)
+	}
+}
+
+func TestPlayBoosterSets(t *testing.T) {
+	playBooster := func(subtype string) []mtgjson.SealedProduct {
+		return []mtgjson.SealedProduct{{Category: "booster_pack", Subtype: subtype}}
+	}
+	entries := []mtgjson.SetListEntry{
+		{Code: "NEW", ReleaseDate: "2025-06-01", SealedProduct: playBooster("play")},
+		{Code: "OLD", ReleaseDate: "2020-01-01", SealedProduct: playBooster("play")},
+		{Code: "FUTURE", ReleaseDate: "2099-01-01", SealedProduct: playBooster("play")}, // not released yet
+		{Code: "DRAFTONLY", ReleaseDate: "2021-01-01", SealedProduct: playBooster("draft")},
+		{Code: "NODATE", ReleaseDate: "", SealedProduct: playBooster("play")},
+	}
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	got := playBoosterSets(entries, now)
+	want := []string{"OLD", "NEW"}
+	if len(got) != len(want) {
+		t.Fatalf("playBoosterSets = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("playBoosterSets = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestReleaseDate(t *testing.T) {
+	if got := releaseDate("2024-11-15"); !got.Valid {
+		t.Error("releaseDate(\"2024-11-15\") should be valid")
+	}
+	if got := releaseDate(""); got.Valid {
+		t.Errorf("releaseDate(\"\") = %+v, want null", got)
+	}
+	if got := releaseDate("not-a-date"); got.Valid {
+		t.Errorf("releaseDate(\"not-a-date\") = %+v, want null", got)
 	}
 }
 

@@ -30,10 +30,12 @@ make dev          # starts Postgres via docker compose
 make migrate-up   # applies the schema
 ```
 
-**2. Import a set** (once — pulls booster structure from MTGJSON and card images from Scryfall)
+**2. Import sets** (once — pulls booster structure from MTGJSON and card images from Scryfall)
 
 ```bash
 set -a && source .env && set +a
+go run ./cmd/import --all   # every released play booster set
+# or a single set:
 go run ./cmd/import FDN
 ```
 

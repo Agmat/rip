@@ -29,6 +29,7 @@ paths:
   /v1/sets:
     get:
       summary: List sets available to open
+      description: Sets are ordered newest release first.
       responses:
         "200":
           description: OK
