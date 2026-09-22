@@ -88,9 +88,10 @@ func TestFetchPackImage_ReturnsTransparentPNG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode result as PNG: %v", err)
 	}
-	_, _, _, a := decoded.At(0, 0).RGBA()
-	if a != 0 {
-		t.Errorf("corner pixel alpha = %d, want 0 (background removed)", a)
+	// cropToPack trims the background away rather than leaving it
+	// transparent in place, so the result is smaller than the source photo.
+	if b := decoded.Bounds(); b.Dx() >= 200 || b.Dy() >= 200 {
+		t.Errorf("decoded bounds = %v, want smaller than the 200x200 source (background cropped away)", b)
 	}
 }
 
