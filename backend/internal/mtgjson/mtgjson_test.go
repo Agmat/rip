@@ -144,4 +144,7 @@ func TestParseSetFile_McmIDs(t *testing.T) {
 	if pack.Identifiers.MCMID != "781936" {
 		t.Errorf("booster_pack MCMID = %q, want 781936", pack.Identifiers.MCMID)
 	}
+	if pack.Identifiers.TCGplayerProductID != "562116" {
+		t.Errorf("booster_pack TCGplayerProductID = %q, want 562116", pack.Identifiers.TCGplayerProductID)
+	}
 }
