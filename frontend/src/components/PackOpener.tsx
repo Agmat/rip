@@ -74,7 +74,7 @@ export default function PackOpener() {
           <button onClick={handleRip} disabled={tearing} className="rip-button">
             {tearing ? "ripping…" : "rip another"}
           </button>
-          <button onClick={handleChangePack} className="pack-arrow text-sm">
+          <button onClick={handleChangePack} className="ghost-button">
             change pack
           </button>
         </div>

@@ -214,6 +214,8 @@ button:disabled {
 .rip-button {
   border-radius: 6px;
   padding: 0.75rem 1.75rem;
+  min-width: 9.5rem; /* wider than any label so "ripping…" doesn't shift the row */
+  text-align: center;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -226,6 +228,24 @@ button:disabled {
 }
 
 .rip-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.ghost-button {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+  background: transparent;
+}
+
+.ghost-button:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.ghost-button:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
