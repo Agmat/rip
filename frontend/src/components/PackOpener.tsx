@@ -84,7 +84,8 @@ export default function PackOpener() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex w-full flex-col items-center gap-5">
+      <PackRack sets={sets} index={index} onSelect={setIndex} tearing={tearing} />
       <div className="flex items-center gap-4">
         {sets.length > 1 && (
           <button
@@ -95,7 +96,7 @@ export default function PackOpener() {
             ‹
           </button>
         )}
-        <Pack set={selectedSet} tearing={tearing} />
+        <h2 className="display min-w-48 text-center text-xl">{selectedSet.name}</h2>
         {sets.length > 1 && (
           <button
             onClick={() => setIndex((i) => (i + 1) % sets.length)}
@@ -113,6 +114,59 @@ export default function PackOpener() {
         {tearing ? "ripping…" : "rip pack"}
       </button>
       {openError && <p className="text-sm text-red-400">Couldn&apos;t open the pack: {openError}</p>}
+    </div>
+  );
+}
+
+// How many packs to show on each side of the selected one. Beyond this
+// they're faded out by the rack's edge mask anyway, so don't mount them.
+const RACK_REACH = 3;
+
+// The packs standing in a row like a display rack: neighbors recede in 3D
+// and dim, the selected one faces you and carries the tilt/tear behavior.
+// Arrow buttons and ←/→ keys are the accessible path; clicking a neighbor
+// is a shortcut, so those slots stay out of the tab order.
+function PackRack({
+  sets,
+  index,
+  onSelect,
+  tearing,
+}: {
+  sets: SetSummary[];
+  index: number;
+  onSelect: (i: number) => void;
+  tearing: boolean;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") onSelect((index - 1 + sets.length) % sets.length);
+      if (e.key === "ArrowRight") onSelect((index + 1) % sets.length);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [index, sets.length, onSelect]);
+
+  return (
+    <div className="rack">
+      {sets.map((set, i) => {
+        // Offset wrapped to the shortest way round, so the rack reads as a
+        // ring and both sides stay filled at the first and last set.
+        const n = sets.length;
+        const d = ((((i - index) % n) + n + Math.floor(n / 2)) % n) - Math.floor(n / 2);
+        if (Math.abs(d) > RACK_REACH) return null;
+        const selected = d === 0;
+        return (
+          <div
+            key={set.code}
+            className={`rack-slot${selected ? " selected" : ""}`}
+            style={{ "--d": d, "--ad": Math.abs(d) } as React.CSSProperties}
+            onClick={selected ? undefined : () => onSelect(i)}
+            aria-hidden={!selected}
+          >
+            <Pack set={set} tearing={selected && tearing} />
+          </div>
+        );
+      })}
     </div>
   );
 }

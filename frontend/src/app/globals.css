@@ -13,6 +13,7 @@
   --rarity-uncommon: #b9c6cf;
   --rarity-rare: #d4a63a;
   --rarity-mythic: #e4622a;
+  --pack-w: min(60vw, 220px);
 }
 
 @theme inline {
@@ -43,7 +44,7 @@ body {
 
 .pack {
   position: relative;
-  width: min(60vw, 220px);
+  width: var(--pack-w);
   aspect-ratio: 21 / 40;
   filter: drop-shadow(0 20px 32px rgba(0, 0, 0, 0.55));
   transform: perspective(800px) rotateX(calc((0.5 - var(--my, 0.5)) * 10deg))
@@ -120,6 +121,56 @@ body {
   .pack.tearing .pack-half.bottom {
     animation: none !important;
     opacity: 0;
+  }
+}
+
+/* --- rack --- */
+/* Packs standing in a row. Each slot is placed from its offset to the
+ * selected one (--d, signed; --ad, absolute): slid sideways, pushed back
+ * and turned toward the center, dimmed with distance. The edge mask lets
+ * the outermost ones dissolve instead of clipping. */
+.rack {
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  height: calc(var(--pack-w) * 40 / 21);
+  perspective: 1200px;
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+}
+
+.rack-slot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(calc(-50% + var(--d) * 92%))
+    translateZ(calc(var(--ad) * -90px)) rotateY(calc(var(--d) * -22deg));
+  filter: brightness(calc(1 - var(--ad) * 0.32));
+  opacity: calc(1 - var(--ad) * 0.12);
+  z-index: calc(10 - var(--ad));
+  transition:
+    transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 400ms,
+    opacity 400ms;
+}
+
+.rack-slot:not(.selected) {
+  cursor: pointer;
+}
+
+/* Neighbors are flat: the rack does the 3D, and tilt is the selected
+ * pack's move. */
+.rack-slot:not(.selected) .pack {
+  transform: none;
+  pointer-events: none;
+}
+
+.rack-slot:not(.selected):hover {
+  filter: brightness(calc(1 - var(--ad) * 0.18));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rack-slot {
+    transition: none;
   }
 }
 
