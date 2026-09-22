@@ -15,6 +15,9 @@ import (
 // the plain white studio background transparent, without touching white
 // elements inside the artwork (logo text, card-count badge) since those
 // aren't connected to the border through any path of near-white pixels.
+// The fill is then cropped to the pack's bounding box and clamped by
+// edgeBand (see cropToPack) rather than guarded by a fraction threshold -
+// see that function's comment for why.
 const (
 	// seedThreshold: how close to pure white a border pixel must be to
 	// start the fill. Strict, so we only ever seed from genuine background.
@@ -25,23 +28,27 @@ const (
 	// across this band (0 at pure white, 255 at the threshold) so the cut
 	// edge softens instead of aliasing.
 	growThreshold = 60.0
-	// maxBackgroundFraction: if the fill touches more of the image than
-	// this, the thresholds above are almost certainly wrong for this photo
-	// (e.g. a wrapper that's itself near-white at the edges) rather than
-	// correctly finding a thin margin. Better to keep a whole pack with its
-	// original white edges than a pack chewed into by a bad cut.
-	maxBackgroundFraction = 0.40
+	// edgeBand: how deep (px) the background can legitimately reach inside
+	// the pack's bounding box - the rounded corners plus the anti-aliased
+	// margin, on a 600px-tall photo. Anything the flood fill cleared deeper
+	// than this is pack interior that happens to be near-white (Final
+	// Fantasy's wrapper is white) and gets its alpha restored. Replaces the
+	// old "more than 40% cleared means a bad cut" guard, which misfired on
+	// photos that are 600x600 with the pack centred in wide white padding
+	// (MKM, OTJ, TLA) - there, ~50% cleared is the correct answer.
+	edgeBand = 14
 )
 
 // removeWhiteBackground turns a product photo shot on a plain white studio
 // background (as TCGplayer's are) into a PNG with that background made
-// transparent. See the threshold constants above for how.
+// transparent, cropped to the pack itself so every photo - tightly framed
+// or padded - ends up the same shape. See the threshold constants above.
 func removeWhiteBackground(jpegData []byte) ([]byte, error) {
 	src, err := jpeg.Decode(bytes.NewReader(jpegData))
 	if err != nil {
 		return nil, fmt.Errorf("decode jpeg: %w", err)
 	}
-	return encodePNG(floodFillTransparent(src))
+	return encodePNG(cropToPack(floodFillTransparent(src)))
 }
 
 // floodFillTransparent runs the background-removal flood fill on any
@@ -95,11 +102,9 @@ func floodFillTransparent(src image.Image) *image.NRGBA {
 	}
 
 	dirs := [4]image.Point{{X: 1}, {X: -1}, {Y: 1}, {Y: -1}}
-	touched := 0
 	for len(queue) > 0 {
 		p := queue[len(queue)-1]
 		queue = queue[:len(queue)-1]
-		touched++
 		d := distFromWhite(p.X, p.Y)
 		setAlpha(p.X, p.Y, alphaForDistance(d))
 		for _, dir := range dirs {
@@ -118,19 +123,58 @@ func floodFillTransparent(src image.Image) *image.NRGBA {
 		}
 	}
 
-	if float64(touched)/float64(w*h) > maxBackgroundFraction {
-		// The cut is almost certainly wrong for this photo - undo it and
-		// hand back a fully opaque image (the original white edges) rather
-		// than one that's had a chunk of its own artwork removed.
-		opaque := image.NewNRGBA(image.Rect(0, 0, w, h))
-		draw.Draw(opaque, opaque.Bounds(), src, bounds.Min, draw.Src)
-		for i := 3; i < len(opaque.Pix); i += 4 {
-			opaque.Pix[i] = 255
+	return img
+}
+
+// cropToPack trims the flood-filled image to the pack's bounding box
+// (so padded 600x600 product photos end up the same shape as the
+// tightly framed ones) and re-opaques anything the fill reached deeper
+// than edgeBand inside that box. Returns img unchanged if nothing is
+// opaque - the caller's photo was all background, which is nonsense
+// but not worth erroring over for decorative art.
+func cropToPack(img *image.NRGBA) *image.NRGBA {
+	bounds := img.Bounds()
+	minX, minY := bounds.Max.X, bounds.Max.Y
+	maxX, maxY := bounds.Min.X, bounds.Min.Y
+	found := false
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if img.Pix[img.PixOffset(x, y)+3] == 0 {
+				continue
+			}
+			found = true
+			if x < minX {
+				minX = x
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if y > maxY {
+				maxY = y
+			}
 		}
-		return opaque
+	}
+	if !found {
+		return img
 	}
 
-	return img
+	bb := image.Rect(minX, minY, maxX+1, maxY+1)
+	out := image.NewNRGBA(image.Rect(0, 0, bb.Dx(), bb.Dy()))
+	for y := bb.Min.Y; y < bb.Max.Y; y++ {
+		for x := bb.Min.X; x < bb.Max.X; x++ {
+			si := img.PixOffset(x, y)
+			dx, dy := x-bb.Min.X, y-bb.Min.Y
+			di := out.PixOffset(dx, dy)
+			copy(out.Pix[di:di+4], img.Pix[si:si+4])
+			if min(dx, bb.Dx()-1-dx, dy, bb.Dy()-1-dy) > edgeBand {
+				out.Pix[di+3] = 255
+			}
+		}
+	}
+	return out
 }
 
 func encodePNG(img *image.NRGBA) ([]byte, error) {

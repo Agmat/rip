@@ -7,11 +7,10 @@ import (
 )
 
 // swatch draws a synthetic photo: a white canvas, a colored rectangle (the
-// "pack") with a thin margin of white (the "studio background") around it -
-// proportioned like the real product photos this was tuned against (a few
-// percent background, not a boundary case for the >40% guard) - and a white
-// square *inside* the rectangle (a stand-in for the pack's own white
-// text/logo), isolated from the border by colored pixels on every side.
+// "pack") with a thin margin of white (the "studio background") around it,
+// and a white square *inside* the rectangle (a stand-in for the pack's own
+// white text/logo), isolated from the border by colored pixels on every
+// side.
 func swatch() *image.NRGBA {
 	const size = 40
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
@@ -57,23 +56,57 @@ func TestFloodFillTransparent_RemovesOnlyBorderConnectedWhite(t *testing.T) {
 	}
 }
 
-func TestFloodFillTransparent_AllWhiteTripsGuardAndStaysOpaque(t *testing.T) {
-	const size = 20
+func TestCropToPack_TrimsPadding(t *testing.T) {
+	const size = 100
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	white := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	packColor := color.NRGBA{R: 200, G: 40, B: 40, A: 255}
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
 			img.Set(x, y, white)
 		}
 	}
-
-	out := floodFillTransparent(img)
-
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
-			if a := alphaAt(out, x, y); a != 255 {
-				t.Fatalf("all-white image should trip the >%.0f%% guard and stay fully opaque; pixel (%d,%d) has alpha %d", maxBackgroundFraction*100, x, y, a)
-			}
+	for y := 5; y < 95; y++ {
+		for x := 30; x < 70; x++ {
+			img.Set(x, y, packColor)
 		}
+	}
+
+	filled := floodFillTransparent(img)
+	if a := alphaAt(filled, 0, 0); a != 0 {
+		t.Fatalf("pre-crop image should have transparent padding at (0,0), got alpha %d", a)
+	}
+
+	out := cropToPack(filled)
+	if got := out.Bounds().Size(); got != (image.Point{X: 40, Y: 90}) {
+		t.Errorf("cropped size: want (40, 90), got %v", got)
+	}
+}
+
+func TestCropToPack_RestoresInteriorAlpha(t *testing.T) {
+	filled := floodFillTransparent(swatch())
+	// Pack's opaque bbox is (1,1)-(38,38): (20,20) is > edgeBand from every
+	// crop edge, (2,20) is within edgeBand of the left edge.
+	filled.Pix[filled.PixOffset(20, 20)+3] = 0
+	filled.Pix[filled.PixOffset(2, 20)+3] = 0
+
+	out := cropToPack(filled)
+
+	if a := alphaAt(out, 19, 19); a != 255 {
+		t.Errorf("interior pixel beyond edgeBand: want alpha restored to 255, got %d", a)
+	}
+	if a := alphaAt(out, 1, 19); a != 0 {
+		t.Errorf("pixel within edgeBand: want alpha left at 0, got %d", a)
+	}
+}
+
+func TestCropToPack_AllTransparentIsNoop(t *testing.T) {
+	const size = 10
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+
+	out := cropToPack(img)
+
+	if got := out.Bounds().Size(); got != (image.Point{X: size, Y: size}) {
+		t.Errorf("all-transparent image: want unchanged bounds %dx%d, got %v", size, size, got)
 	}
 }
