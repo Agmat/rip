@@ -167,12 +167,11 @@ func (imp *importer) importSet(ctx context.Context, pool *pgxpool.Pool, setCode 
 	}
 
 	var packImage []byte
-	if img, found, err := imp.fetchPackImageFromWiki(ctx, DefaultMTGWikiPageBaseURL, DefaultMTGWikiFilesBaseURL, primary.Data.Name); err != nil {
-		// Decorative art must never block getting the cards in - any
-		// fetch failure here is a warning, not an error.
-		slog.Warn("failed to fetch pack image from mtg.wiki, importing without one", "set", setCode, "error", err)
-	} else if !found {
-		slog.Warn("no Play Booster pack image found on mtg.wiki, importing without one", "set", setCode)
+	if packImgURL, ok := packImageURL(primary, boosterType, DefaultTCGplayerImageBaseURL); !ok {
+		slog.Warn("no TCGplayer pack image id, importing without one", "set", setCode, "booster_type", boosterType)
+	} else if img, err := imp.fetchPackImage(ctx, packImgURL); err != nil {
+		// Decorative art must never block getting the cards in.
+		slog.Warn("failed to fetch/process pack image, importing without one", "set", setCode, "error", err)
 	} else {
 		packImage = img
 	}

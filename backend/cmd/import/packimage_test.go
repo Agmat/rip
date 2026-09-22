@@ -1,107 +1,107 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
+
+	"github.com/Agmat/rip/backend/internal/mtgjson"
 )
 
-// wikiPageFixture is a trimmed excerpt of mtg.wiki's real rendered HTML for
-// a set page (the infobox image, srcset and all) - enough to exercise the
-// real regex against the real markup shape, not a hand-simplified stand-in.
-const wikiPageFixture = `<html><body>
-<figure><a href="/page/Special:FilePath/FND_Play_Booster.png">
-<img alt="" src="https://files.mtg.wiki/thumb/FND_Play_Booster.png/200px-FND_Play_Booster.png"
-srcset="https://files.mtg.wiki/thumb/FND_Play_Booster.png/300px-FND_Play_Booster.png 1.5x,
-https://files.mtg.wiki/thumb/FND_Play_Booster.png/400px-FND_Play_Booster.png 2x"
-width="200" height="364"></a></figure>
-</body></html>`
-
-const fakePNG = "\x89PNG\r\n\x1a\nfake-png-bytes"
-
-func TestFetchPackImageFromWiki_FindsImage(t *testing.T) {
-	var gotPagePath string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/page/Foundations":
-			gotPagePath = r.URL.Path
-			_, _ = w.Write([]byte(wikiPageFixture))
-		case "/FND_Play_Booster.png":
-			w.Header().Set("Content-Type", "image/png")
-			_, _ = w.Write([]byte(fakePNG))
-		default:
-			w.WriteHeader(http.StatusNotFound)
+// jpegSwatch draws a white canvas with a colored "pack" rectangle and a
+// generous margin, like a real TCGplayer product photo - big enough that
+// JPEG's block compression doesn't distort the corner background badly
+// enough to trip the seed threshold, unlike packart_test.go's tiny swatch()
+// (built for exact-pixel NRGBA assertions, not a JPEG round trip).
+func jpegSwatch() image.Image {
+	const size = 200
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+	white := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	packColor := color.NRGBA{R: 200, G: 40, B: 40, A: 255}
+	for y := range size {
+		for x := range size {
+			img.Set(x, y, white)
 		}
+	}
+	for y := 20; y < size-20; y++ {
+		for x := 20; x < size-20; x++ {
+			img.Set(x, y, packColor)
+		}
+	}
+	return img
+}
+
+func TestPackImageURL_PicksBoosterPackOfMatchingSubtype(t *testing.T) {
+	var sf mtgjson.SetFile
+	box := mtgjson.SealedProduct{Category: "booster_box", Subtype: "play"}
+	box.Identifiers.TCGplayerProductID = "1"
+	collector := mtgjson.SealedProduct{Category: "booster_pack", Subtype: "collector"}
+	collector.Identifiers.TCGplayerProductID = "2"
+	play := mtgjson.SealedProduct{Category: "booster_pack", Subtype: "play"}
+	play.Identifiers.TCGplayerProductID = "562116"
+	sf.Data.SealedProduct = []mtgjson.SealedProduct{box, collector, play}
+
+	got, ok := packImageURL(&sf, "play", "https://cdn.example.com")
+	if !ok || got != "https://cdn.example.com/562116.jpg" {
+		t.Errorf("packImageURL = (%q, %v), want (https://cdn.example.com/562116.jpg, true)", got, ok)
+	}
+	if _, ok := packImageURL(&sf, "draft", "https://cdn.example.com"); ok {
+		t.Error("packImageURL(draft) = ok true, want false (no matching subtype)")
+	}
+}
+
+func TestPackImageURL_EmptyIDIsFalse(t *testing.T) {
+	var sf mtgjson.SetFile
+	play := mtgjson.SealedProduct{Category: "booster_pack", Subtype: "play"}
+	sf.Data.SealedProduct = []mtgjson.SealedProduct{play}
+
+	if _, ok := packImageURL(&sf, "play", "https://cdn.example.com"); ok {
+		t.Error("packImageURL with empty id = ok true, want false")
+	}
+}
+
+func TestFetchPackImage_ReturnsTransparentPNG(t *testing.T) {
+	var jpegData bytes.Buffer
+	if err := jpeg.Encode(&jpegData, jpegSwatch(), &jpeg.Options{Quality: 90}); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write(jpegData.Bytes())
 	}))
 	defer srv.Close()
 
 	imp := &importer{httpClient: srv.Client()}
-	img, found, err := imp.fetchPackImageFromWiki(context.Background(), srv.URL+"/page", srv.URL, "Foundations")
+	got, err := imp.fetchPackImage(context.Background(), srv.URL+"/562116.jpg")
 	if err != nil {
-		t.Fatalf("fetchPackImageFromWiki: %v", err)
+		t.Fatalf("fetchPackImage: %v", err)
 	}
-	if !found {
-		t.Fatal("found = false, want true")
+
+	decoded, err := png.Decode(bytes.NewReader(got))
+	if err != nil {
+		t.Fatalf("decode result as PNG: %v", err)
 	}
-	if string(img) != fakePNG {
-		t.Errorf("img = %q, want %q", img, fakePNG)
-	}
-	if gotPagePath != "/page/Foundations" {
-		t.Errorf("requested page path = %q, want /page/Foundations", gotPagePath)
+	_, _, _, a := decoded.At(0, 0).RGBA()
+	if a != 0 {
+		t.Errorf("corner pixel alpha = %d, want 0 (background removed)", a)
 	}
 }
 
-func TestFetchPackImageFromWiki_SetNameIsURLEscaped(t *testing.T) {
-	var gotEscapedPath, gotDecodedPath string
+func TestFetchPackImage_Non200IsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotEscapedPath = r.URL.EscapedPath() // the actual wire form
-		gotDecodedPath = r.URL.Path
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer srv.Close()
 
 	imp := &importer{httpClient: srv.Client()}
-	_, _, err := imp.fetchPackImageFromWiki(context.Background(), srv.URL+"/page", srv.URL, "Kaladesh Remastered")
-	if err == nil {
-		t.Fatal("expected an error for a 404 page response")
-	}
-	if wantEscaped := "/page/" + url.PathEscape("Kaladesh Remastered"); gotEscapedPath != wantEscaped {
-		t.Errorf("wire path = %q, want %q (the space must be percent-encoded on the wire)", gotEscapedPath, wantEscaped)
-	}
-	if wantDecoded := "/page/Kaladesh Remastered"; gotDecodedPath != wantDecoded {
-		t.Errorf("decoded path = %q, want %q", gotDecodedPath, wantDecoded)
-	}
-}
-
-func TestFetchPackImageFromWiki_NoImageOnPage(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("<html><body>no pack image here</body></html>"))
-	}))
-	defer srv.Close()
-
-	imp := &importer{httpClient: srv.Client()}
-	img, found, err := imp.fetchPackImageFromWiki(context.Background(), srv.URL+"/page", srv.URL, "Some Obscure Set")
-	if err != nil {
-		t.Fatalf("fetchPackImageFromWiki: %v", err)
-	}
-	if found {
-		t.Fatal("found = true, want false (decorative art missing is not an error)")
-	}
-	if img != nil {
-		t.Errorf("img = %v, want nil", img)
-	}
-}
-
-func TestFetchPackImageFromWiki_PageFetchError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	imp := &importer{httpClient: srv.Client()}
-	if _, _, err := imp.fetchPackImageFromWiki(context.Background(), srv.URL+"/page", srv.URL, "Foundations"); err == nil {
-		t.Fatal("expected an error for a 500 page response")
+	if _, err := imp.fetchPackImage(context.Background(), srv.URL+"/missing.jpg"); err == nil {
+		t.Fatal("expected an error for a 404 response")
 	}
 }

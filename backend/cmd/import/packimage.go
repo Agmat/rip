@@ -5,65 +5,48 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"regexp"
+
+	"github.com/Agmat/rip/backend/internal/mtgjson"
 )
 
 const (
-	// DefaultMTGWikiPageBaseURL and DefaultMTGWikiFilesBaseURL are mtg.wiki's
-	// real hosts. Overridable so tests can point fetchPackImageFromWiki at
-	// an httptest server instead of the real network.
-	DefaultMTGWikiPageBaseURL  = "https://mtg.wiki/page"
-	DefaultMTGWikiFilesBaseURL = "https://files.mtg.wiki"
+	// DefaultTCGplayerImageBaseURL is TCGplayer's public image CDN.
+	// Overridable so tests can point packImageURL/fetchPackImage at an
+	// httptest server instead of the real network.
+	DefaultTCGplayerImageBaseURL = "https://product-images.tcgplayer.com/fit-in/600x600"
 
 	// userAgent identifies this project, matching internal/scryfall's own
-	// policy of always sending a descriptive one - mtg.wiki's robots.txt
-	// shows they pay attention to how bots use the site.
+	// policy of always sending a descriptive one.
 	userAgent = "rip-import/0.1 (+https://github.com/Agmat/rip)"
 )
 
-// playBoosterImageRe finds the Play Booster product image on a rendered
-// mtg.wiki set page: a thumbnail URL under <filesBaseURL>/thumb/, whose
-// filename ends in _Play_Booster.png. Hardcoded to "Play Booster" since
-// that's the only booster type this importer opens (see boosterType);
-// generalize this if a second type is ever added.
-var playBoosterImageRe = regexp.MustCompile(`/thumb/([^"/]+_Play_Booster\.png)/`)
+// packImageURL builds a set's Play Booster product photo URL from the
+// MTGJSON sealedProduct entry with category "booster_pack" and a matching
+// subtype - the same entry packMCMID uses for the price id. Neither MTGJSON
+// nor Scryfall host pack art directly, but MTGJSON does carry the
+// TCGplayer product id needed to construct the CDN URL. false means no such
+// id exists for this set; the caller imports without a pack image.
+func packImageURL(sf *mtgjson.SetFile, boosterType, baseURL string) (string, bool) {
+	for _, p := range sf.Data.SealedProduct {
+		if p.Category == "booster_pack" && p.Subtype == boosterType {
+			id := p.Identifiers.TCGplayerProductID
+			if id == "" {
+				return "", false
+			}
+			return fmt.Sprintf("%s/%s.jpg", baseURL, id), true
+		}
+	}
+	return "", false
+}
 
-// fetchPackImageFromWiki finds and downloads a set's Play Booster product
-// photo from mtg.wiki. Unlike TCGplayer's studio JPEGs, these are PNGs
-// with real alpha transparency already cut around the pack, so the bytes
-// are stored exactly as served - no background-removal processing needed.
-//
-// Wiki filenames are hand-curated by editors and don't reliably match a
-// set's official MTGJSON/Scryfall code (Foundations, for one, is filed as
-// "FND_Play_Booster.png" rather than "FDN") - so this resolves by fetching
-// the set's page by its plain name (mtg.wiki reliably redirects that to the
-// right article) and scraping the image out of the rendered page, rather
-// than constructing the filename directly.
-//
-// robots.txt disallows /api.php, so this deliberately doesn't use the
-// wiki's search API - a plain page fetch is allowed. false, nil means "no
-// pack image found for this set", not an error: this is decorative art and
-// must never block getting the cards in.
-func (imp *importer) fetchPackImageFromWiki(ctx context.Context, pageBaseURL, filesBaseURL, setName string) ([]byte, bool, error) {
-	pageURL := pageBaseURL + "/" + url.PathEscape(setName)
-
-	html, err := imp.fetchBytes(ctx, pageURL)
+// fetchPackImage downloads a pack photo from TCGplayer and strips its
+// studio white background to transparency via removeWhiteBackground.
+func (imp *importer) fetchPackImage(ctx context.Context, url string) ([]byte, error) {
+	jpegData, err := imp.fetchBytes(ctx, url)
 	if err != nil {
-		return nil, false, fmt.Errorf("fetch wiki page: %w", err)
+		return nil, fmt.Errorf("fetch pack image: %w", err)
 	}
-
-	m := playBoosterImageRe.FindSubmatch(html)
-	if m == nil {
-		return nil, false, nil
-	}
-	imageURL := filesBaseURL + "/" + string(m[1])
-
-	img, err := imp.fetchBytes(ctx, imageURL)
-	if err != nil {
-		return nil, false, fmt.Errorf("fetch pack image: %w", err)
-	}
-	return img, true, nil
+	return removeWhiteBackground(jpegData)
 }
 
 func (imp *importer) fetchBytes(ctx context.Context, url string) ([]byte, error) {
