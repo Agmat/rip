@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { listSets, openPack } from "@/lib/api";
 import { formatEUR } from "@/lib/money";
+import { addPack, EMPTY_SESSION, loadSession, saveSession, type Session } from "@/lib/session";
 import type { PackOpen, Pricing, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
 import Pack from "./Pack";
@@ -15,6 +16,11 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// When the pack total reveals: after the last card's stagger.
+function revealDelayMs(pack: PackOpen) {
+  return pack.cards.length * 80 + 400;
+}
+
 export default function PackOpener() {
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const [setsError, setSetsError] = useState<string | null>(null);
@@ -22,6 +28,10 @@ export default function PackOpener() {
   const [pack, setPack] = useState<PackOpen | null>(null);
   const [tearing, setTearing] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
+  // Only rendered once sets have loaded (client-side), so reading storage in
+  // the initializer can't cause a hydration mismatch.
+  const [session, setSession] = useState<Session>(loadSession);
+  const sessionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     listSets()
@@ -49,12 +59,26 @@ export default function PackOpener() {
     try {
       const [result] = await Promise.all([openPack(selectedSet.code), wait(TEAR_MS)]);
       setPack(result);
+      // Persist now so a reload mid-reveal doesn't lose the pack, but show it
+      // alongside the pack total so the bar doesn't spoil the result.
+      const next = addPack(loadSession(), result.pricing);
+      saveSession(next);
+      clearTimeout(sessionTimer.current);
+      sessionTimer.current = setTimeout(() => setSession(next), revealDelayMs(result));
     } catch (err) {
       setOpenError(err instanceof Error ? err.message : "failed to open pack");
     } finally {
       setTearing(false);
     }
   }
+
+  function handleResetSession() {
+    clearTimeout(sessionTimer.current);
+    saveSession(EMPTY_SESSION);
+    setSession(EMPTY_SESSION);
+  }
+
+  const sessionBar = <SessionBar session={session} onReset={handleResetSession} />;
 
   function handleChangePack() {
     setPack(null);
@@ -64,12 +88,13 @@ export default function PackOpener() {
   if (pack) {
     return (
       <div className="flex flex-col items-center gap-4">
+        {sessionBar}
         <div className="reveal-grid grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {pack.cards.map((pick, i) => (
             <CardTile key={`${pick.slot}-${pick.card.id}`} pick={pick} index={i} />
           ))}
         </div>
-        <PackValue pricing={pack.pricing} revealDelayMs={pack.cards.length * 80 + 400} />
+        <PackValue pricing={pack.pricing} revealDelayMs={revealDelayMs(pack)} />
         <div className="flex items-center gap-3">
           <button onClick={handleRip} disabled={tearing} className="rip-button">
             {tearing ? "ripping…" : "rip another"}
@@ -85,6 +110,7 @@ export default function PackOpener() {
 
   return (
     <div className="flex w-full flex-col items-center gap-5">
+      {sessionBar}
       <PackRack sets={sets} index={index} onSelect={setIndex} tearing={tearing} />
       <div className="flex items-center gap-4">
         {sets.length > 1 && (
@@ -202,6 +228,33 @@ function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs
       {unpriced > 0 && (
         <p className="text-xs text-muted">
           {unpriced} card{unpriced === 1 ? "" : "s"} unpriced on Cardmarket
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Running P/L since the last reset. Hidden until the first pack is ripped.
+function SessionBar({ session, onReset }: { session: Session; onReset: () => void }) {
+  const { packs, unpriced, spent, pulled } = session;
+  if (packs === 0) return null;
+  const net = pulled - spent;
+
+  return (
+    <div className="text-center text-sm">
+      <p className="text-muted">
+        Session · {packs} pack{packs === 1 ? "" : "s"} · spent {formatEUR(spent)} · pulled {formatEUR(pulled)} ·{" "}
+        <span className={net >= 0 ? "text-green-400" : "text-red-400"}>
+          {net >= 0 ? "+" : "−"}
+          {formatEUR(Math.abs(net))}
+        </span>{" "}
+        <button onClick={onReset} className="ghost-button">
+          reset
+        </button>
+      </p>
+      {unpriced > 0 && (
+        <p className="text-xs text-muted">
+          {unpriced} unpriced pack{unpriced === 1 ? "" : "s"} excluded
         </p>
       )}
     </div>
