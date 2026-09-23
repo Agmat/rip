@@ -17,10 +17,9 @@ SELECT * FROM booster_configs
 WHERE set_code = $1 AND booster_type = $2 AND is_active;
 
 -- name: ListActiveBoosterConfigsWithSetName :many
--- md5(NULL) is NULL, and sqlc types this column as non-nullable text, so
--- COALESCE to "" (treated as "no pack image" in Go) rather than let a set
--- with no image fail to scan.
-SELECT bc.set_code, s.name AS set_name, COALESCE(md5(s.pack_image), '')::text AS pack_image_hash, bc.booster_type,
+-- pack_image_hash is NULL for a set with no image; COALESCE to "" (treated
+-- as "no pack image" in Go) so sqlc keeps the column a plain string.
+SELECT bc.set_code, s.name AS set_name, COALESCE(s.pack_image_hash, '')::text AS pack_image_hash, bc.booster_type,
        s.pack_price_eur, s.pack_priced_at
 FROM booster_configs bc
 JOIN sets s ON s.code = bc.set_code

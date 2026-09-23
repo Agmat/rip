@@ -74,7 +74,7 @@ ON CONFLICT (code) DO UPDATE SET
     pack_image   = COALESCE(EXCLUDED.pack_image, sets.pack_image),
     mcm_id       = COALESCE(EXCLUDED.mcm_id, sets.mcm_id),
     release_date = COALESCE(EXCLUDED.release_date, sets.release_date)
-RETURNING code, name, created_at, pack_image, mcm_id, pack_price_eur, pack_priced_at, release_date
+RETURNING code, name, created_at, pack_image, mcm_id, pack_price_eur, pack_priced_at, release_date, pack_image_hash
 `
 
 type UpsertSetParams struct {
@@ -107,6 +107,7 @@ func (q *Queries) UpsertSet(ctx context.Context, arg UpsertSetParams) (Set, erro
 		&i.PackPriceEur,
 		&i.PackPricedAt,
 		&i.ReleaseDate,
+		&i.PackImageHash,
 	)
 	return i, err
 }
