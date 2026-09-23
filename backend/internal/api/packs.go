@@ -171,20 +171,23 @@ func (s *Server) insertPackOpen(ctx context.Context, boosterConfigID int64, vari
 		return pgtype.UUID{}, fmt.Errorf("insert pack_opens: %w", err)
 	}
 
-	for _, p := range picks {
+	rows := make([]db.InsertPackOpenCardsParams, len(picks))
+	for i, p := range picks {
 		cardID, err := parseUUID(p.CardUUID)
 		if err != nil {
 			return pgtype.UUID{}, fmt.Errorf("pick card id: %w", err)
 		}
-		if err := q.InsertPackOpenCard(ctx, db.InsertPackOpenCardParams{
+		rows[i] = db.InsertPackOpenCardsParams{
 			PackOpenID: po.ID,
 			Slot:       int32(p.Slot),
 			SheetName:  p.SheetName,
 			Foil:       p.Foil,
 			CardID:     cardID,
-		}); err != nil {
-			return pgtype.UUID{}, fmt.Errorf("insert pack_open_cards (slot %d): %w", p.Slot, err)
 		}
+	}
+	// One COPY instead of a round-trip per card.
+	if _, err := q.InsertPackOpenCards(ctx, rows); err != nil {
+		return pgtype.UUID{}, fmt.Errorf("insert pack_open_cards: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

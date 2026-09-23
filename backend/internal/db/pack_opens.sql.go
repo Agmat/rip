@@ -70,28 +70,12 @@ func (q *Queries) InsertPackOpen(ctx context.Context, arg InsertPackOpenParams) 
 	return i, err
 }
 
-const insertPackOpenCard = `-- name: InsertPackOpenCard :exec
-INSERT INTO pack_open_cards (pack_open_id, slot, sheet_name, foil, card_id)
-VALUES ($1, $2, $3, $4, $5)
-`
-
-type InsertPackOpenCardParams struct {
+type InsertPackOpenCardsParams struct {
 	PackOpenID pgtype.UUID `json:"pack_open_id"`
 	Slot       int32       `json:"slot"`
 	SheetName  string      `json:"sheet_name"`
 	Foil       bool        `json:"foil"`
 	CardID     pgtype.UUID `json:"card_id"`
-}
-
-func (q *Queries) InsertPackOpenCard(ctx context.Context, arg InsertPackOpenCardParams) error {
-	_, err := q.db.Exec(ctx, insertPackOpenCard,
-		arg.PackOpenID,
-		arg.Slot,
-		arg.SheetName,
-		arg.Foil,
-		arg.CardID,
-	)
-	return err
 }
 
 const listPackOpenCards = `-- name: ListPackOpenCards :many

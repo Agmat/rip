@@ -3,7 +3,7 @@ INSERT INTO pack_opens (booster_config_id, pack_variant_index, seed)
 VALUES ($1, $2, $3)
 RETURNING *;
 
--- name: InsertPackOpenCard :exec
+-- name: InsertPackOpenCards :copyfrom
 INSERT INTO pack_open_cards (pack_open_id, slot, sheet_name, foil, card_id)
 VALUES ($1, $2, $3, $4, $5);
 
