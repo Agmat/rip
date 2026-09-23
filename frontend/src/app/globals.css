@@ -13,7 +13,12 @@
   --rarity-uncommon: #b9c6cf;
   --rarity-rare: #d4a63a;
   --rarity-mythic: #e4622a;
-  --pack-w: min(60vw, 220px);
+  /* Box a hair wider than the widest cropped pack photo (TLA, 0.573):
+   * object-fit: contain then pins every pack to the full box height and
+   * only the transparent side margins vary. Width bumped so the pack
+   * stays as tall as it was at the old 21/40 box. */
+  --pack-ratio: 7 / 12;
+  --pack-w: min(66vw, 245px);
 }
 
 @theme inline {
@@ -37,15 +42,15 @@ body {
 }
 
 /* --- pack --- */
-/* Real product photography (TCGplayer-hotlinked), not drawn. The 21/40
- * aspect ratio matches the standard Play Booster pack photo; object-fit:
- * contain keeps a differently-shaped future photo from ever distorting,
- * it would just letterbox instead of filling the frame. */
+/* Real product photography (TCGplayer, background removed and cropped to
+ * the pack by the importer), not drawn. Cropped photos range 0.525-0.573
+ * wide/tall, so the box uses --pack-ratio (wider than all of them) and
+ * object-fit: contain: every pack renders the same height, none distort. */
 
 .pack {
   position: relative;
   width: var(--pack-w);
-  aspect-ratio: 21 / 40;
+  aspect-ratio: var(--pack-ratio);
   filter: drop-shadow(0 20px 32px rgba(0, 0, 0, 0.55));
   transform: perspective(800px) rotateX(calc((0.5 - var(--my, 0.5)) * 10deg))
     rotateY(calc((var(--mx, 0.5) - 0.5) * 10deg));
@@ -133,7 +138,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 1000px;
-  height: calc(var(--pack-w) * 40 / 21);
+  height: calc(var(--pack-w) / (var(--pack-ratio)));
   perspective: 1200px;
   mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
 }
