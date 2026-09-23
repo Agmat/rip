@@ -66,7 +66,12 @@ export default function PackOpener() {
       <div className="flex flex-col items-center gap-4">
         <div className="reveal-grid grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {pack.cards.map((pick, i) => (
-            <CardTile key={`${pick.slot}-${pick.card.id}`} pick={pick} index={i} />
+            <CardTile
+              key={`${pick.slot}-${pick.card.id}`}
+              pick={pick}
+              index={i}
+              packPrice={pack.pricing.pack_price_eur}
+            />
           ))}
         </div>
         <PackValue pricing={pack.pricing} revealDelayMs={pack.cards.length * 80 + 400} />
