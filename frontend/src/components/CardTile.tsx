@@ -12,36 +12,62 @@ const RARITY_COLOR: Record<CardSummary["rarity"], string> = {
   bonus: "var(--rarity-mythic)",
 };
 
-export default function CardTile({ pick, index }: { pick: CardPick; index: number }) {
+// A hit is a card worth at least the pack on its own. Commons and uncommons
+// glow rare gold: their grey reads as a border, not a highlight.
+function hitColor(pick: CardPick, packPrice: number | null): string | null {
+  if (packPrice == null || pick.price_eur == null || pick.price_eur < packPrice) return null;
+  const { rarity } = pick.card;
+  return rarity === "common" || rarity === "uncommon" ? "var(--rarity-rare)" : RARITY_COLOR[rarity];
+}
+
+export default function CardTile({
+  pick,
+  index,
+  packPrice,
+}: {
+  pick: CardPick;
+  index: number;
+  packPrice: number | null;
+}) {
   const src = primaryImage(pick.card.image_uris);
+  const hit = hitColor(pick, packPrice);
 
   return (
     <div
       className="flex flex-col items-center gap-0.5 opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      {src ? (
-        <Image
-          src={src}
-          alt={pick.card.name}
-          width={244}
-          height={340}
-          className="h-auto w-full rounded-lg"
-          unoptimized
-        />
-      ) : (
-        <div className="flex aspect-[244/340] w-full items-center justify-center rounded-lg bg-surface text-sm text-muted">
-          no image
-        </div>
-      )}
+      <div
+        className="w-full rounded-lg"
+        style={hit ? { boxShadow: `0 0 0 2px ${hit}, 0 0 18px 2px ${hit}` } : undefined}
+      >
+        {src ? (
+          <Image
+            src={src}
+            alt={pick.card.name}
+            width={244}
+            height={340}
+            className="h-auto w-full rounded-lg"
+            unoptimized
+          />
+        ) : (
+          <div className="flex aspect-[244/340] w-full items-center justify-center rounded-lg bg-surface text-sm text-muted">
+            no image
+          </div>
+        )}
+      </div>
       <p className="w-full truncate text-center text-xs text-ink">{pick.card.name}</p>
       <p className="text-[11px]">
         <span style={{ color: RARITY_COLOR[pick.card.rarity] }}>
           {pick.card.rarity}
           {pick.foil ? " · foil" : ""}
         </span>{" "}
-        <span className="text-muted">
+        <span
+          className={hit ? "font-bold" : "text-muted"}
+          style={hit ? { color: hit } : undefined}
+        >
           · {pick.price_eur != null ? formatEUR(pick.price_eur) : "—"}
+          {hit && <span className="sr-only"> (worth more than the pack)</span>}
         </span>
       </p>
     </div>
