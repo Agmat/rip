@@ -139,12 +139,14 @@ function PackRack({
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // Don't swap the pack out from under a tear that's mid-animation.
+      if (tearing) return;
       if (e.key === "ArrowLeft") onSelect((index - 1 + sets.length) % sets.length);
       if (e.key === "ArrowRight") onSelect((index + 1) % sets.length);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [index, sets.length, onSelect]);
+  }, [index, sets.length, onSelect, tearing]);
 
   return (
     <div className="rack">
