@@ -37,6 +37,11 @@ const (
 	// photos that are 600x600 with the pack centred in wide white padding
 	// (MKM, OTJ, TLA) - there, ~50% cleared is the correct answer.
 	edgeBand = 14
+	// fringeDepth: how many px in from the cut the photo's pixels are still
+	// a blend of pack and white background (JPEG + anti-aliasing), on a
+	// 600px-tall photo. defringe re-derives their color and alpha from the
+	// first pixel past this depth.
+	fringeDepth = 2
 )
 
 // removeWhiteBackground turns a product photo shot on a plain white studio
@@ -48,7 +53,7 @@ func removeWhiteBackground(jpegData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode jpeg: %w", err)
 	}
-	return encodePNG(cropToPack(floodFillTransparent(src)))
+	return encodePNG(defringe(cropToPack(floodFillTransparent(src))))
 }
 
 // floodFillTransparent runs the background-removal flood fill on any
@@ -126,12 +131,15 @@ func floodFillTransparent(src image.Image) *image.NRGBA {
 	return img
 }
 
-// cropToPack trims the flood-filled image to the pack's bounding box
-// (so padded 600x600 product photos end up the same shape as the
-// tightly framed ones) and re-opaques anything the fill reached deeper
-// than edgeBand inside that box. Returns img unchanged if nothing is
+// cropToPack trims the flood-filled image to the bounding box of its mostly
+// opaque (alpha >= 128) pixels, so padded 600x600 product photos end up the
+// same shape as the tightly framed ones, faint JPEG specks left in the
+// background can't push the box out, and a silver crimp (HOB, FIN: close to
+// white, so only partly opaque) still counts as pack. It then re-opaques
+// anything the fill reached deeper than edgeBand inside that box. Returns img unchanged if nothing is
 // opaque - the caller's photo was all background, which is nonsense
-// but not worth erroring over for decorative art.
+// but not worth erroring over for decorative art. Pixels outside the box are
+// dropped; defringe handles the partly transparent ones inside it.
 func cropToPack(img *image.NRGBA) *image.NRGBA {
 	bounds := img.Bounds()
 	minX, minY := bounds.Max.X, bounds.Max.Y
@@ -139,7 +147,7 @@ func cropToPack(img *image.NRGBA) *image.NRGBA {
 	found := false
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			if img.Pix[img.PixOffset(x, y)+3] == 0 {
+			if img.Pix[img.PixOffset(x, y)+3] < 128 {
 				continue
 			}
 			found = true
@@ -173,6 +181,109 @@ func cropToPack(img *image.NRGBA) *image.NRGBA {
 				out.Pix[di+3] = 255
 			}
 		}
+	}
+	return out
+}
+
+// defringe removes the light halo the cut leaves around the pack. The flood
+// fill only lowers alpha, so an edge pixel keeps its near-white color, and
+// the first opaque pixels are still half white: on a dark page that reads
+// as a white outline. Every pixel within fringeDepth of the cut (or not
+// fully opaque) instead takes the color of the nearest solid pack pixel
+// past that depth, with alpha set to how far it sits from white towards
+// that color - un-blending it from the background. Pixels more than
+// 2*fringeDepth from any solid pixel are leftover background noise and go
+// fully transparent.
+func defringe(img *image.NRGBA) *image.NRGBA {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	idx := func(x, y int) int { return y*w + x }
+	dirs := [4]image.Point{{X: 1}, {X: -1}, {Y: 1}, {Y: -1}}
+
+	// depth: 4-connected distance from the nearest non-opaque pixel or the
+	// image edge (which is where the crop cut the background away).
+	depth := make([]int, w*h)
+	queue := make([]image.Point, 0, w*h)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			switch {
+			case img.Pix[img.PixOffset(x, y)+3] != 255:
+				depth[idx(x, y)] = 0
+			case x == 0 || y == 0 || x == w-1 || y == h-1:
+				depth[idx(x, y)] = 1
+			default:
+				depth[idx(x, y)] = -1
+				continue
+			}
+			queue = append(queue, image.Point{X: x, Y: y})
+		}
+	}
+	for i := 0; i < len(queue); i++ {
+		p := queue[i]
+		for _, d := range dirs {
+			nx, ny := p.X+d.X, p.Y+d.Y
+			if nx < 0 || nx >= w || ny < 0 || ny >= h || depth[idx(nx, ny)] != -1 {
+				continue
+			}
+			depth[idx(nx, ny)] = depth[idx(p.X, p.Y)] + 1
+			queue = append(queue, image.Point{X: nx, Y: ny})
+		}
+	}
+
+	// src: the nearest core pixel (deeper than fringeDepth) for every other
+	// pixel, by BFS outward from the core; dist is how far away it is.
+	src := make([]int, w*h)
+	dist := make([]int, w*h)
+	queue = queue[:0]
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			i := idx(x, y)
+			if depth[i] > fringeDepth || depth[i] == -1 {
+				src[i], dist[i] = i, 0
+				queue = append(queue, image.Point{X: x, Y: y})
+			} else {
+				src[i], dist[i] = -1, 0
+			}
+		}
+	}
+	for i := 0; i < len(queue); i++ {
+		p := queue[i]
+		pi := idx(p.X, p.Y)
+		for _, d := range dirs {
+			nx, ny := p.X+d.X, p.Y+d.Y
+			if nx < 0 || nx >= w || ny < 0 || ny >= h || src[idx(nx, ny)] != -1 {
+				continue
+			}
+			src[idx(nx, ny)], dist[idx(nx, ny)] = src[pi], dist[pi]+1
+			queue = append(queue, image.Point{X: nx, Y: ny})
+		}
+	}
+
+	out := image.NewNRGBA(img.Bounds())
+	copy(out.Pix, img.Pix)
+	for i := range src {
+		if dist[i] == 0 {
+			continue // core, or no core anywhere: leave as is
+		}
+		o := 4 * i
+		if src[i] == -1 || dist[i] > 2*fringeDepth {
+			out.Pix[o+3] = 0
+			continue
+		}
+		s := 4 * src[i]
+		// Project the pixel onto the white -> core-color line: 0 is pure
+		// background, 1 is pure pack.
+		var num, den float64
+		for c := 0; c < 3; c++ {
+			bg := 255 - float64(img.Pix[s+c])
+			num += (255 - float64(img.Pix[o+c])) * bg
+			den += bg * bg
+		}
+		if den < 30*30 {
+			continue // pack is itself near-white here: nothing to un-blend
+		}
+		a := math.Min(1, math.Max(0, num/den))
+		copy(out.Pix[o:o+3], img.Pix[s:s+3])
+		out.Pix[o+3] = uint8(math.Round(255 * a))
 	}
 	return out
 }
