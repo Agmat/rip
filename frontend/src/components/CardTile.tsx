@@ -24,10 +24,12 @@ export default function CardTile({
   pick,
   index,
   packPrice,
+  dimmed,
 }: {
   pick: CardPick;
   index: number;
   packPrice: number | null;
+  dimmed: boolean;
 }) {
   const src = primaryImage(pick.card.image_uris);
   const hit = hitColor(pick, packPrice);
@@ -35,7 +37,8 @@ export default function CardTile({
   return (
     <div
       className="flex flex-col items-center gap-0.5 opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
-      style={{ animationDelay: `${index * 80}ms` }}
+      // filter, not opacity: the reveal animation owns opacity.
+      style={{ animationDelay: `${index * 80}ms`, filter: dimmed ? "opacity(0.5)" : undefined }}
     >
       <div
         className="w-full rounded-lg"
