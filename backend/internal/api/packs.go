@@ -83,6 +83,8 @@ type openPackRequest struct {
 
 func (s *Server) handleOpenPack(w http.ResponseWriter, r *http.Request) {
 	var req openPackRequest
+	// The body is two short strings; cap it so nobody can stream megabytes at the decoder.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<10)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "malformed JSON body")
 		return
