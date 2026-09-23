@@ -177,16 +177,16 @@ func seedFixtures(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	// Price the set and the one fixture card that has an mcm_id, the way
 	// prices.Refresh would, so pricing assertions have something to see.
 	pricedAt := pgtype.Timestamptz{Time: time.Now(), Valid: true}
-	if err := q.UpdateSetPackPrice(ctx, db.UpdateSetPackPriceParams{
-		Code: "FDN", PackPriceEur: pgtype.Float8{Float64: 4.36, Valid: true}, PackPricedAt: pricedAt,
+	if err := q.UpdateSetPackPrices(ctx, db.UpdateSetPackPricesParams{
+		Codes: []string{"FDN"}, Prices: []float64{4.36}, PricedAt: pricedAt,
 	}); err != nil {
 		t.Fatalf("seed pack price: %v", err)
 	}
-	if err := q.UpdateCardPrice(ctx, db.UpdateCardPriceParams{
-		ID:           mustParseTestUUID(t, "01a67c48-2ba1-55ba-aee9-8f0ad4ccf5c9"), // Ruby, Daring Tracker
-		PriceEur:     pgtype.Float8{Float64: 0.25, Valid: true},
-		PriceFoilEur: pgtype.Float8{Float64: 1.5, Valid: true},
-		PricedAt:     pricedAt,
+	if err := q.UpdateCardPrices(ctx, db.UpdateCardPricesParams{
+		Ids:        []pgtype.UUID{mustParseTestUUID(t, "01a67c48-2ba1-55ba-aee9-8f0ad4ccf5c9")}, // Ruby, Daring Tracker
+		Prices:     []float64{0.25},
+		FoilPrices: []float64{1.5},
+		PricedAt:   pricedAt,
 	}); err != nil {
 		t.Fatalf("seed card price: %v", err)
 	}

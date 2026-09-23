@@ -18,5 +18,9 @@ SELECT pack_image FROM sets WHERE code = $1;
 -- name: ListSetsWithMcmID :many
 SELECT code, mcm_id FROM sets WHERE mcm_id IS NOT NULL;
 
--- name: UpdateSetPackPrice :exec
-UPDATE sets SET pack_price_eur = $2, pack_priced_at = $3 WHERE code = $1;
+-- name: UpdateSetPackPrices :exec
+-- One statement for every set. A 0 price means "no figure" and is stored
+-- as NULL (float8[] params can't carry NULLs through sqlc).
+UPDATE sets s SET pack_price_eur = NULLIF(u.price, 0), pack_priced_at = @priced_at
+FROM (SELECT unnest(@codes::text[]) AS code, unnest(@prices::float8[]) AS price) u
+WHERE s.code = u.code;

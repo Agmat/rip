@@ -40,23 +40,28 @@ func (q *Queries) ListCardsWithMcmID(ctx context.Context) ([]ListCardsWithMcmIDR
 	return items, nil
 }
 
-const updateCardPrice = `-- name: UpdateCardPrice :exec
-UPDATE cards SET price_eur = $2, price_foil_eur = $3, priced_at = $4 WHERE id = $1
+const updateCardPrices = `-- name: UpdateCardPrices :exec
+UPDATE cards c SET price_eur = NULLIF(u.price, 0), price_foil_eur = NULLIF(u.price_foil, 0), priced_at = $1
+FROM (SELECT unnest($2::uuid[]) AS id, unnest($3::float8[]) AS price, unnest($4::float8[]) AS price_foil) u
+WHERE c.id = u.id
 `
 
-type UpdateCardPriceParams struct {
-	ID           pgtype.UUID        `json:"id"`
-	PriceEur     pgtype.Float8      `json:"price_eur"`
-	PriceFoilEur pgtype.Float8      `json:"price_foil_eur"`
-	PricedAt     pgtype.Timestamptz `json:"priced_at"`
+type UpdateCardPricesParams struct {
+	PricedAt   pgtype.Timestamptz `json:"priced_at"`
+	Ids        []pgtype.UUID      `json:"ids"`
+	Prices     []float64          `json:"prices"`
+	FoilPrices []float64          `json:"foil_prices"`
 }
 
-func (q *Queries) UpdateCardPrice(ctx context.Context, arg UpdateCardPriceParams) error {
-	_, err := q.db.Exec(ctx, updateCardPrice,
-		arg.ID,
-		arg.PriceEur,
-		arg.PriceFoilEur,
+// One statement for every card instead of a round-trip each. A 0 price
+// means "no figure" and is stored as NULL (float8[] params can't carry
+// NULLs through sqlc).
+func (q *Queries) UpdateCardPrices(ctx context.Context, arg UpdateCardPricesParams) error {
+	_, err := q.db.Exec(ctx, updateCardPrices,
 		arg.PricedAt,
+		arg.Ids,
+		arg.Prices,
+		arg.FoilPrices,
 	)
 	return err
 }

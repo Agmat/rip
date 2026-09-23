@@ -51,18 +51,22 @@ func (q *Queries) ListSetsWithMcmID(ctx context.Context) ([]ListSetsWithMcmIDRow
 	return items, nil
 }
 
-const updateSetPackPrice = `-- name: UpdateSetPackPrice :exec
-UPDATE sets SET pack_price_eur = $2, pack_priced_at = $3 WHERE code = $1
+const updateSetPackPrices = `-- name: UpdateSetPackPrices :exec
+UPDATE sets s SET pack_price_eur = NULLIF(u.price, 0), pack_priced_at = $1
+FROM (SELECT unnest($2::text[]) AS code, unnest($3::float8[]) AS price) u
+WHERE s.code = u.code
 `
 
-type UpdateSetPackPriceParams struct {
-	Code         string             `json:"code"`
-	PackPriceEur pgtype.Float8      `json:"pack_price_eur"`
-	PackPricedAt pgtype.Timestamptz `json:"pack_priced_at"`
+type UpdateSetPackPricesParams struct {
+	PricedAt pgtype.Timestamptz `json:"priced_at"`
+	Codes    []string           `json:"codes"`
+	Prices   []float64          `json:"prices"`
 }
 
-func (q *Queries) UpdateSetPackPrice(ctx context.Context, arg UpdateSetPackPriceParams) error {
-	_, err := q.db.Exec(ctx, updateSetPackPrice, arg.Code, arg.PackPriceEur, arg.PackPricedAt)
+// One statement for every set. A 0 price means "no figure" and is stored
+// as NULL (float8[] params can't carry NULLs through sqlc).
+func (q *Queries) UpdateSetPackPrices(ctx context.Context, arg UpdateSetPackPricesParams) error {
+	_, err := q.db.Exec(ctx, updateSetPackPrices, arg.PricedAt, arg.Codes, arg.Prices)
 	return err
 }
 

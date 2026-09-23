@@ -43,40 +43,47 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool, client *http.Client, guide
 	now := pgtype.Timestamptz{Time: time.Now(), Valid: true}
 	var st Stats
 
+	// Collected into arrays and written in one statement per table: a
+	// per-row UPDATE is a round-trip each, which across every imported card
+	// can outlast the caller's timeout. An invalid price's Float64 is 0,
+	// which the queries store as NULL.
 	cards, err := q.ListCardsWithMcmID(ctx)
 	if err != nil {
 		return Stats{}, fmt.Errorf("list cards: %w", err)
 	}
+	cardArgs := db.UpdateCardPricesParams{PricedAt: now}
 	for _, c := range cards {
 		trend, trendFoil, found := Lookup(guide, c.McmID)
 		if !found {
 			st.CardsMissing++
 			continue
 		}
-		if err := q.UpdateCardPrice(ctx, db.UpdateCardPriceParams{
-			ID: c.ID, PriceEur: trend, PriceFoilEur: trendFoil, PricedAt: now,
-		}); err != nil {
-			return Stats{}, fmt.Errorf("update card %s price: %w", c.ID, err)
-		}
+		cardArgs.Ids = append(cardArgs.Ids, c.ID)
+		cardArgs.Prices = append(cardArgs.Prices, trend.Float64)
+		cardArgs.FoilPrices = append(cardArgs.FoilPrices, trendFoil.Float64)
 		st.Cards++
+	}
+	if err := q.UpdateCardPrices(ctx, cardArgs); err != nil {
+		return Stats{}, fmt.Errorf("update card prices: %w", err)
 	}
 
 	sets, err := q.ListSetsWithMcmID(ctx)
 	if err != nil {
 		return Stats{}, fmt.Errorf("list sets: %w", err)
 	}
+	setArgs := db.UpdateSetPackPricesParams{PricedAt: now}
 	for _, s := range sets {
 		trend, _, found := Lookup(guide, s.McmID)
 		if !found {
 			st.SetsMissing++
 			continue
 		}
-		if err := q.UpdateSetPackPrice(ctx, db.UpdateSetPackPriceParams{
-			Code: s.Code, PackPriceEur: trend, PackPricedAt: now,
-		}); err != nil {
-			return Stats{}, fmt.Errorf("update set %s pack price: %w", s.Code, err)
-		}
+		setArgs.Codes = append(setArgs.Codes, s.Code)
+		setArgs.Prices = append(setArgs.Prices, trend.Float64)
 		st.Sets++
+	}
+	if err := q.UpdateSetPackPrices(ctx, setArgs); err != nil {
+		return Stats{}, fmt.Errorf("update set pack prices: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

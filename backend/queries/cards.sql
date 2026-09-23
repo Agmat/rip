@@ -16,5 +16,10 @@ RETURNING *;
 -- name: ListCardsWithMcmID :many
 SELECT id, mcm_id FROM cards WHERE mcm_id IS NOT NULL;
 
--- name: UpdateCardPrice :exec
-UPDATE cards SET price_eur = $2, price_foil_eur = $3, priced_at = $4 WHERE id = $1;
+-- name: UpdateCardPrices :exec
+-- One statement for every card instead of a round-trip each. A 0 price
+-- means "no figure" and is stored as NULL (float8[] params can't carry
+-- NULLs through sqlc).
+UPDATE cards c SET price_eur = NULLIF(u.price, 0), price_foil_eur = NULLIF(u.price_foil, 0), priced_at = @priced_at
+FROM (SELECT unnest(@ids::uuid[]) AS id, unnest(@prices::float8[]) AS price, unnest(@foil_prices::float8[]) AS price_foil) u
+WHERE c.id = u.id;
