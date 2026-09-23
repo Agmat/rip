@@ -275,3 +275,15 @@ button:disabled {
   --card-w: min(200px, calc((100dvh - 26rem) / 2 * 0.7176));
   max-width: calc(7 * var(--card-w) + 6 * 0.75rem);
 }
+
+.settings-dialog {
+  margin: auto;
+  min-width: min(20rem, calc(100vw - 2rem));
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.settings-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}

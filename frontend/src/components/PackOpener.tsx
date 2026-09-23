@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { listSets, openPack } from "@/lib/api";
 import { formatEUR } from "@/lib/money";
 import { addPack, EMPTY_SESSION, loadSession, saveSession, type Session } from "@/lib/session";
+import { isDimmed, loadSettings, saveSettings, type Settings } from "@/lib/settings";
 import type { PackOpen, Pricing, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
 import Pack from "./Pack";
+import SettingsModal from "./SettingsModal";
 
 // Minimum time the tear animation gets to play, even if the API answers
 // faster - so opening never feels like an instant cut.
@@ -31,6 +33,7 @@ export default function PackOpener() {
   // Only rendered once sets have loaded (client-side), so reading storage in
   // the initializer can't cause a hydration mismatch.
   const [session, setSession] = useState<Session>(loadSession);
+  const [settings, setSettings] = useState<Settings>(loadSettings);
   const sessionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
@@ -78,7 +81,17 @@ export default function PackOpener() {
     setSession(EMPTY_SESSION);
   }
 
-  const sessionBar = <SessionBar session={session} onReset={handleResetSession} />;
+  function handleSettingsChange(next: Settings) {
+    saveSettings(next);
+    setSettings(next);
+  }
+
+  const sessionBar = (
+    <>
+      <SettingsModal settings={settings} onChange={handleSettingsChange} />
+      <SessionBar session={session} onReset={handleResetSession} />
+    </>
+  );
 
   function handleChangePack() {
     setPack(null);
@@ -96,6 +109,7 @@ export default function PackOpener() {
               pick={pick}
               index={i}
               packPrice={pack.pricing.pack_price_eur}
+              dimmed={isDimmed(settings, pick.price_eur)}
             />
           ))}
         </div>
