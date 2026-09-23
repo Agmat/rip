@@ -217,22 +217,14 @@ func (s *Server) handleGetPack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-	po, err := s.queries.GetPackOpen(ctx, id)
+	po, cardRows, err := s.fetchPackOpen(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "pack open not found")
 		return
 	}
 	if err != nil {
-		s.logger.Error("get pack open", "error", err)
+		s.logger.Error("fetch pack open", "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal", "failed to load pack open")
-		return
-	}
-
-	cardRows, err := s.queries.ListPackOpenCards(ctx, id)
-	if err != nil {
-		s.logger.Error("list pack open cards", "error", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal", "failed to load pack open cards")
 		return
 	}
 
