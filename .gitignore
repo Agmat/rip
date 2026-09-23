@@ -12,6 +12,7 @@ graphify-out/
 
 # Env
 .env
+.env.prod
 *.env.local
 
 # macOS

@@ -1,0 +1,17 @@
+# Resets the Neon "dev" branch to prod's current state, so local work runs on
+# fresh real data without ever touching prod.
+name: Reset dev DB
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Mondays 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npx -y neonctl@6 branches reset dev --parent --project-id "$NEON_PROJECT_ID"
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
