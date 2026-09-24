@@ -428,3 +428,140 @@ button:disabled {
   border-radius: 10px;
   color: var(--muted);
 }
+
+/* --- card zoom --- */
+/* One card up close: big card left, its numbers right, arrows either side.
+ * The dialog is transparent; the backdrop dims the pack behind. */
+
+.card-zoom-trigger {
+  cursor: zoom-in;
+}
+
+.card-zoom-trigger:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.card-zoom {
+  margin: auto;
+  max-width: 100vw;
+  max-height: 100dvh;
+  padding: 1rem;
+  background: transparent;
+  color: var(--ink);
+}
+
+.card-zoom[open] {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.card-zoom::backdrop {
+  background: rgb(0 0 0 / 0.75);
+}
+
+.card-zoom-body {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.card-zoom-img {
+  width: auto;
+  height: min(78dvh, 680px);
+  aspect-ratio: 244 / 340;
+  border-radius: 4.75% / 3.5%;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.6);
+}
+
+/* Stepping: --dir is +1 for next, -1 for previous. The old card leaves
+ * against the arrow, the new one arrives from the arrow's side. */
+.card-zoom-body.enter {
+  animation: zoom-enter 220ms ease-out;
+}
+
+.card-zoom-body.leave {
+  animation: zoom-leave 150ms ease-in forwards;
+}
+
+@keyframes zoom-enter {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--dir) * 80px));
+  }
+}
+
+@keyframes zoom-leave {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--dir) * -80px));
+  }
+}
+
+/* Near-instant rather than none: the swap waits on animationend. */
+@media (prefers-reduced-motion: reduce) {
+  .card-zoom-body.enter,
+  .card-zoom-body.leave {
+    animation-duration: 1ms;
+  }
+}
+
+.card-zoom-body > div:last-child {
+  width: 18rem;
+}
+
+.card-zoom-arrow {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-zoom-arrow:hover {
+  border-color: var(--muted);
+}
+
+.card-zoom-back {
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  font-weight: 700;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.card-zoom-arrow:focus-visible,
+.card-zoom-back:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Phones: card on top, numbers underneath, arrows stay at the sides. */
+@media (max-width: 640px) {
+  .card-zoom[open] {
+    gap: 0.5rem;
+  }
+  .card-zoom-body {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .card-zoom-img {
+    height: auto;
+    width: min(70vw, 20rem);
+  }
+  .card-zoom-body > div:last-child {
+    width: auto;
+  }
+  .card-zoom-arrow {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
