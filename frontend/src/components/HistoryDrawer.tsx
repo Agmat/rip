@@ -104,7 +104,9 @@ export default function HistoryDrawer({
         ref={viewer}
         className="pack-viewer"
         aria-label="Pack viewer"
-        onClose={() => setViewing(null)}
+        // React bubbles `close` up its tree, so the nested card zoom closing
+        // would land here too - only react to the viewer's own close.
+        onClose={(e) => e.target === e.currentTarget && setViewing(null)}
       >
         {viewing != null && history[viewing] && (
           // Keyed per pack so switching packs replays the reveal and drops the zoom.
