@@ -4,3 +4,8 @@ const eur = new Intl.NumberFormat("en", { style: "currency", currency: "EUR" });
 export function formatEUR(n: number): string {
   return eur.format(n);
 }
+
+/** "+€1.20" / "−€0.89" (true minus sign). */
+export function formatSignedEUR(n: number): string {
+  return `${n >= 0 ? "+" : "−"}${eur.format(Math.abs(n))}`;
+}
