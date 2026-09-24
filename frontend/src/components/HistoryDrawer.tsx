@@ -177,8 +177,8 @@ function HistoryItem({
               ) : (
                 <span className="history-thumb bg-surface" />
               )}
-              <span className="flex-1 truncate">{pick.card.name}</span>
-              <span className="text-xs text-muted" style={{ color: priceColor(pick) }}>
+              <span className="min-w-0 flex-1 truncate">{pick.card.name}</span>
+              <span className="shrink-0 text-xs text-muted" style={{ color: priceColor(pick) }}>
                 {pick.price_eur != null ? formatEUR(pick.price_eur) : "—"}
               </span>
             </li>
