@@ -9,6 +9,9 @@
   --surface: #221f1b;
   --ink: #ece6dc;
   --muted: #8f877c;
+  --gain: #6fcf8a;
+  --loss: #f0645a;
+  --line: #3a352f;
   --rarity-common: #a0a0a0;
   --rarity-uncommon: #b9c6cf;
   --rarity-rare: #d4a63a;
@@ -26,6 +29,8 @@
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
   --font-sans: var(--font-barlow);
   --font-display: var(--font-barlow-condensed);
 }
@@ -290,4 +295,136 @@ button:disabled {
 
 .settings-dialog::backdrop {
   background: rgb(0 0 0 / 0.6);
+}
+
+/* --- session tracker --- */
+
+.session-pill {
+  anchor-name: --session-pill;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  background: var(--bg);
+}
+
+.session-pill:hover {
+  border-color: var(--muted);
+}
+
+.session-pill:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.session-pill-sep {
+  width: 1px;
+  height: 0.9rem;
+  background: var(--line);
+}
+
+.session-chev {
+  width: 0.75rem;
+  color: var(--muted);
+  rotate: 180deg;
+  transition: rotate 150ms ease-out;
+}
+
+.session-pill:has(+ .session-pop:popover-open) .session-chev {
+  rotate: 0deg;
+}
+
+/* Hangs centered under the pill (CSS anchor positioning). */
+.session-pop {
+  position-anchor: --session-pill;
+  position-area: bottom span-all;
+  justify-self: anchor-center;
+  margin: 0.6rem 0 0;
+  width: min(18.75rem, calc(100vw - 2rem));
+  padding: 1.1rem 1.1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+
+.session-pop:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.session-kicker {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.session-rows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.session-rows dd {
+  font-weight: 500;
+  text-align: right;
+}
+
+.session-net {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 0.25rem;
+}
+
+.session-reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  font-weight: 500;
+}
+
+.session-reset:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+
+.session-reset:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.session-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.1rem 0.5rem 0.6rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.session-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.4rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
 }

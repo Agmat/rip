@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { listSets, openPack } from "@/lib/api";
 import { formatEUR } from "@/lib/money";
 import { addPack, EMPTY_SESSION, loadSession, saveSession, type Session } from "@/lib/session";
@@ -18,9 +18,9 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// When the pack total reveals: after the last card's stagger.
+// When the pack total reveals: alongside the last card, so both land together.
 function revealDelayMs(pack: PackOpen) {
-  return pack.cards.length * 80 + 400;
+  return (pack.cards.length - 1) * 80;
 }
 
 export default function PackOpener() {
@@ -34,7 +34,6 @@ export default function PackOpener() {
   // the initializer can't cause a hydration mismatch.
   const [session, setSession] = useState<Session>(loadSession);
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const sessionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     listSets()
@@ -62,12 +61,9 @@ export default function PackOpener() {
     try {
       const [result] = await Promise.all([openPack(selectedSet.code), wait(TEAR_MS)]);
       setPack(result);
-      // Persist now so a reload mid-reveal doesn't lose the pack, but show it
-      // alongside the pack total so the bar doesn't spoil the result.
-      const next = addPack(loadSession(), result.pricing);
-      saveSession(next);
-      clearTimeout(sessionTimer.current);
-      sessionTimer.current = setTimeout(() => setSession(next), revealDelayMs(result));
+      // Persist now so a reload mid-reveal doesn't lose the pack; the tracker
+      // picks it up when PackValue's reveal starts, so it can't spoil the result.
+      saveSession(addPack(loadSession(), result.pricing));
     } catch (err) {
       setOpenError(err instanceof Error ? err.message : "failed to open pack");
     } finally {
@@ -76,7 +72,6 @@ export default function PackOpener() {
   }
 
   function handleResetSession() {
-    clearTimeout(sessionTimer.current);
     saveSession(EMPTY_SESSION);
     setSession(EMPTY_SESSION);
   }
@@ -87,10 +82,10 @@ export default function PackOpener() {
   }
 
   const sessionBar = (
-    <>
+    <div className="fixed top-1 right-3 z-10 flex items-center gap-2">
+      <SessionTracker session={session} onReset={handleResetSession} />
       <SettingsModal settings={settings} onChange={handleSettingsChange} />
-      <SessionBar session={session} onReset={handleResetSession} />
-    </>
+    </div>
   );
 
   function handleChangePack() {
@@ -113,7 +108,14 @@ export default function PackOpener() {
             />
           ))}
         </div>
-        <PackValue pricing={pack.pricing} revealDelayMs={revealDelayMs(pack)} />
+        {/* Keyed so "rip another" remounts it and the reveal replays; the
+            animation start is also what updates the tracker, so both land together. */}
+        <PackValue
+          key={pack.open_id}
+          pricing={pack.pricing}
+          revealDelayMs={revealDelayMs(pack)}
+          onReveal={() => setSession(loadSession())}
+        />
         <div className="flex items-center gap-3">
           <button onClick={handleRip} disabled={tearing} className="rip-button">
             {tearing ? "ripping…" : "rip another"}
@@ -218,9 +220,17 @@ function PackRack({
   );
 }
 
-// Shown once the last card has revealed (same reveal animation, delayed past
+// Shown with the last card (same reveal animation, delayed to the end of
 // the stagger) so the total lands as the punchline rather than a spoiler.
-function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs: number }) {
+function PackValue({
+  pricing,
+  revealDelayMs,
+  onReveal,
+}: {
+  pricing: Pricing;
+  revealDelayMs: number;
+  onReveal: () => void;
+}) {
   const { pack_price_eur: packPrice, total_value_eur: total, unpriced_cards: unpriced } = pricing;
 
   let summary: ReactNode;
@@ -230,7 +240,8 @@ function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs
       <>
         Pulled {formatEUR(total)} from a {formatEUR(packPrice)} pack{" "}
         <span className={delta >= 0 ? "text-green-400" : "text-red-400"}>
-          ({delta >= 0 ? "+" : "−"}{formatEUR(Math.abs(delta))})
+          ({delta >= 0 ? "+" : "−"}
+          {formatEUR(Math.abs(delta))})
         </span>
       </>
     );
@@ -242,6 +253,8 @@ function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs
     <div
       className="text-center opacity-0 animate-[reveal_0.4s_ease-out_forwards]"
       style={{ animationDelay: `${revealDelayMs}ms` }}
+      // animationstart fires after the delay, i.e. the moment the total appears.
+      onAnimationStart={onReveal}
     >
       <p className="text-ink">{summary}</p>
       {unpriced > 0 && (
@@ -253,29 +266,99 @@ function PackValue({ pricing, revealDelayMs }: { pricing: Pricing; revealDelayMs
   );
 }
 
-// Running P/L since the last reset. Hidden until the first pack is ripped.
-function SessionBar({ session, onReset }: { session: Session; onReset: () => void }) {
+// Running P/L since the last reset: a pill in the top bar, details in a
+// native popover (light dismiss + Esc for free). Before the first pack it
+// stays neutral and the popover explains what will show up.
+function SessionTracker({ session, onReset }: { session: Session; onReset: () => void }) {
   const { packs, unpriced, spent, pulled } = session;
-  if (packs === 0) return null;
+  const empty = packs === 0;
   const net = pulled - spent;
+  const priced = packs - unpriced;
+  const tone = empty ? "text-ink" : net >= 0 ? "text-gain" : "text-loss";
+  const signed = (n: number) => `${n >= 0 ? "+" : "−"}${formatEUR(Math.abs(n))}`;
+  const packLabel = `${packs} pack${packs === 1 ? "" : "s"}`;
 
   return (
-    <div className="text-center text-sm">
-      <p className="text-muted">
-        Session · {packs} pack{packs === 1 ? "" : "s"} · spent {formatEUR(spent)} · pulled {formatEUR(pulled)} ·{" "}
-        <span className={net >= 0 ? "text-green-400" : "text-red-400"}>
-          {net >= 0 ? "+" : "−"}
-          {formatEUR(Math.abs(net))}
-        </span>{" "}
-        <button onClick={onReset} className="ghost-button">
-          reset
-        </button>
-      </p>
-      {unpriced > 0 && (
-        <p className="text-xs text-muted">
-          {unpriced} unpriced pack{unpriced === 1 ? "" : "s"} excluded
-        </p>
-      )}
-    </div>
+    <>
+      <button popoverTarget="session-pop" className="session-pill">
+        <span className="text-muted">{packLabel}</span>
+        <span className="session-pill-sep" />
+        <span className={`font-medium ${tone}`}>{empty ? formatEUR(0) : signed(net)}</span>
+        <svg className="session-chev" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M3 7.5 6 4.5l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </button>
+      <div id="session-pop" popover="auto" className="session-pop">
+        <p className="session-kicker">Session · {packLabel}</p>
+        {empty ? (
+          <div className="session-empty">
+            <span className="session-empty-icon">
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path
+                  d="M4.5 2.5h7v11h-7zM4.5 5h7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <p className="display text-xl">Nothing ripped yet</p>
+            <p className="text-sm text-muted">Open a pack and your spent, pulled and net totals will show up here.</p>
+          </div>
+        ) : (
+          <>
+            <dl className="session-rows">
+              <dt>Spent</dt>
+              <dd>{formatEUR(spent)}</dd>
+              <dt>Pulled</dt>
+              <dd>{formatEUR(pulled)}</dd>
+            </dl>
+            <div className="session-net">
+              <span>Net</span>
+              <span className={`flex items-baseline gap-2 ${tone}`}>
+                {spent > 0 && (
+                  <span className="text-xs">
+                    {net >= 0 ? "+" : "−"}
+                    {Math.abs((net / spent) * 100).toFixed(1)}%
+                  </span>
+                )}
+                <span className="display text-2xl">{signed(net)}</span>
+              </span>
+            </div>
+            {priced > 0 && (
+              <p className="flex justify-between text-xs text-muted">
+                <span>Avg per pack</span>
+                <span>{signed(net / priced)}</span>
+              </p>
+            )}
+            {unpriced > 0 && (
+              <p className="text-xs text-muted">
+                {unpriced} unpriced pack{unpriced === 1 ? "" : "s"} excluded
+              </p>
+            )}
+            <button
+              onClick={(e) => {
+                onReset();
+                e.currentTarget.closest<HTMLElement>("[popover]")?.hidePopover();
+              }}
+              className="session-reset"
+            >
+              <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+                <path
+                  d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Start new session
+            </button>
+          </>
+        )}
+      </div>
+    </>
   );
 }

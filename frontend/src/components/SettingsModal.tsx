@@ -16,7 +16,7 @@ export default function SettingsModal({
 
   return (
     <>
-      <button onClick={() => dialog.current?.showModal()} className="ghost-button fixed top-1 right-3">
+      <button onClick={() => dialog.current?.showModal()} className="ghost-button">
         settings
       </button>
       <dialog
