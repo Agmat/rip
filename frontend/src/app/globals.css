@@ -565,3 +565,173 @@ button:disabled {
     height: 2.25rem;
   }
 }
+
+/* --- history drawer --- */
+/* Popover pinned to the right edge, full height. Overrides the UA popover
+ * centering (inset: 0; margin: auto). */
+.history-drawer {
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(25rem, 100vw);
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  overflow-y: auto;
+  box-shadow: -16px 0 40px rgb(0 0 0 / 0.45);
+}
+
+.history-drawer:popover-open {
+  animation: drawer-in 200ms ease-out;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-drawer:popover-open {
+    animation: none;
+  }
+}
+
+.history-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.history-close {
+  padding: 0.4rem;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.history-close:hover {
+  color: var(--ink);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem 0.9rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.history-item.current {
+  border-color: var(--ink);
+  background: rgb(255 255 255 / 0.04);
+}
+
+.history-thumb {
+  flex: none;
+  width: 18px;
+  height: 25px;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.history-view {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.history-view:hover {
+  text-decoration: underline;
+}
+
+.history-close:focus-visible,
+.history-view:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.history-item {
+  cursor: pointer;
+}
+
+.history-item:not(.current):hover {
+  border-color: var(--muted);
+}
+
+/* --- pack viewer --- */
+/* Full-screen modal over the page; the page stays faintly visible behind. */
+.pack-viewer {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(23 21 18 / 0.88);
+  color: var(--ink);
+}
+
+.pack-viewer::backdrop {
+  backdrop-filter: blur(6px);
+}
+
+.viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.viewer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.viewer-btn:not(:disabled):hover {
+  border-color: var(--muted);
+}
+
+.viewer-btn:disabled {
+  opacity: 0.35;
+}
+
+.viewer-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Same rule as .reveal-grid: 7×2 sized from the height budget so all 14
+ * cards fit, with the viewer header (and grid padding) as the chrome. */
+.viewer-grid {
+  --card-w: min(200px, calc((100dvh - 14rem) / 2 * 0.7176));
+  max-width: calc(7 * var(--card-w) + 6 * 0.75rem + 3rem);
+  margin: 0 auto;
+  padding: 1.5rem;
+}

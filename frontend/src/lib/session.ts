@@ -1,4 +1,4 @@
-import type { Pricing } from "./types";
+import type { PackOpen, Pricing } from "./types";
 
 // Running P/L across every pack ripped since the user last hit reset.
 // spent/pulled only cover packs with a Cardmarket pack price, so the net
@@ -41,5 +41,32 @@ export function loadSession(): Session {
 export function saveSession(s: Session) {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
+  } catch {}
+}
+
+// The last few packs ripped, newest first, for the history drawer. `n` is the
+// pack's number within the session ("Pack #39").
+export type HistoryEntry = { n: number; pack: PackOpen };
+
+export const HISTORY_SIZE = 10;
+
+const HISTORY_KEY = "rip.history";
+
+export function pushHistory(h: HistoryEntry[], e: HistoryEntry): HistoryEntry[] {
+  return [e, ...h].slice(0, HISTORY_SIZE);
+}
+
+export function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveHistory(h: HistoryEntry[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
   } catch {}
 }

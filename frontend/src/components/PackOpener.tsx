@@ -2,12 +2,23 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { listSets, openPack } from "@/lib/api";
-import { formatEUR } from "@/lib/money";
-import { addPack, EMPTY_SESSION, loadSession, saveSession, type Session } from "@/lib/session";
+import { formatEUR, formatSignedEUR } from "@/lib/money";
+import {
+  addPack,
+  EMPTY_SESSION,
+  loadHistory,
+  loadSession,
+  pushHistory,
+  saveHistory,
+  saveSession,
+  type HistoryEntry,
+  type Session,
+} from "@/lib/session";
 import { isDimmed, loadSettings, saveSettings, type Settings } from "@/lib/settings";
 import type { PackOpen, Pricing, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
 import CardZoom from "./CardZoom";
+import HistoryDrawer from "./HistoryDrawer";
 import Pack from "./Pack";
 import SettingsModal from "./SettingsModal";
 
@@ -35,6 +46,7 @@ export default function PackOpener() {
   // Only rendered once sets have loaded (client-side), so reading storage in
   // the initializer can't cause a hydration mismatch.
   const [session, setSession] = useState<Session>(loadSession);
+  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [settings, setSettings] = useState<Settings>(loadSettings);
 
   useEffect(() => {
@@ -65,7 +77,9 @@ export default function PackOpener() {
       setPack(result);
       // Persist now so a reload mid-reveal doesn't lose the pack; the tracker
       // picks it up when PackValue's reveal starts, so it can't spoil the result.
-      saveSession(addPack(loadSession(), result.pricing));
+      const next = addPack(loadSession(), result.pricing);
+      saveSession(next);
+      saveHistory(pushHistory(loadHistory(), { n: next.packs, pack: result }));
     } catch (err) {
       setOpenError(err instanceof Error ? err.message : "failed to open pack");
     } finally {
@@ -76,6 +90,9 @@ export default function PackOpener() {
   function handleResetSession() {
     saveSession(EMPTY_SESSION);
     setSession(EMPTY_SESSION);
+    // Pack numbers restart with the session, so the old ones would clash.
+    saveHistory([]);
+    setHistory([]);
   }
 
   function handleSettingsChange(next: Settings) {
@@ -84,8 +101,9 @@ export default function PackOpener() {
   }
 
   const sessionBar = (
-    <div className="fixed top-1 right-3 z-10 flex items-center gap-2">
+    <div className="fixed top-2 right-6 z-10 flex items-center gap-2">
       <SessionTracker session={session} onReset={handleResetSession} />
+      <HistoryDrawer history={history} currentId={pack?.open_id ?? null} />
       <SettingsModal settings={settings} onChange={handleSettingsChange} />
     </div>
   );
@@ -127,7 +145,10 @@ export default function PackOpener() {
           key={pack.open_id}
           pricing={pack.pricing}
           revealDelayMs={revealDelayMs(pack)}
-          onReveal={() => setSession(loadSession())}
+          onReveal={() => {
+            setSession(loadSession());
+            setHistory(loadHistory());
+          }}
         />
         <div className="flex items-center gap-3">
           <button onClick={handleRip} disabled={tearing} className="rip-button">
@@ -288,7 +309,6 @@ function SessionTracker({ session, onReset }: { session: Session; onReset: () =>
   const net = pulled - spent;
   const priced = packs - unpriced;
   const tone = empty ? "text-ink" : net >= 0 ? "text-gain" : "text-loss";
-  const signed = (n: number) => `${n >= 0 ? "+" : "−"}${formatEUR(Math.abs(n))}`;
   const packLabel = `${packs} pack${packs === 1 ? "" : "s"}`;
 
   return (
@@ -296,7 +316,7 @@ function SessionTracker({ session, onReset }: { session: Session; onReset: () =>
       <button popoverTarget="session-pop" className="session-pill">
         <span className="text-muted">{packLabel}</span>
         <span className="session-pill-sep" />
-        <span className={`font-medium ${tone}`}>{empty ? formatEUR(0) : signed(net)}</span>
+        <span className={`font-medium ${tone}`}>{empty ? formatEUR(0) : formatSignedEUR(net)}</span>
         <svg className="session-chev" viewBox="0 0 12 12" aria-hidden="true">
           <path d="M3 7.5 6 4.5l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </svg>
@@ -336,13 +356,13 @@ function SessionTracker({ session, onReset }: { session: Session; onReset: () =>
                     {Math.abs((net / spent) * 100).toFixed(1)}%
                   </span>
                 )}
-                <span className="display text-2xl">{signed(net)}</span>
+                <span className="display text-2xl">{formatSignedEUR(net)}</span>
               </span>
             </div>
             {priced > 0 && (
               <p className="flex justify-between text-xs text-muted">
                 <span>Avg per pack</span>
-                <span>{signed(net / priced)}</span>
+                <span>{formatSignedEUR(net / priced)}</span>
               </p>
             )}
             {unpriced > 0 && (
