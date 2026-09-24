@@ -3,7 +3,7 @@ import { formatEUR } from "@/lib/money";
 import type { CardPick, CardSummary } from "@/lib/types";
 import { primaryImage } from "@/lib/types";
 
-const RARITY_COLOR: Record<CardSummary["rarity"], string> = {
+export const RARITY_COLOR: Record<CardSummary["rarity"], string> = {
   common: "var(--rarity-common)",
   uncommon: "var(--rarity-uncommon)",
   rare: "var(--rarity-rare)",
@@ -25,11 +25,13 @@ export default function CardTile({
   index,
   packPrice,
   dimmed,
+  onZoom,
 }: {
   pick: CardPick;
   index: number;
   packPrice: number | null;
   dimmed: boolean;
+  onZoom: () => void;
 }) {
   const src = primaryImage(pick.card.image_uris);
   const hit = hitColor(pick, packPrice);
@@ -40,8 +42,10 @@ export default function CardTile({
       // filter, not opacity: the reveal animation owns opacity.
       style={{ animationDelay: `${index * 80}ms`, filter: dimmed ? "opacity(0.5)" : undefined }}
     >
-      <div
-        className="w-full rounded-lg"
+      <button
+        onClick={onZoom}
+        aria-label={`Zoom in on ${pick.card.name}`}
+        className="card-zoom-trigger block w-full rounded-lg"
         style={hit ? { boxShadow: `0 0 0 2px ${hit}, 0 0 18px 2px ${hit}` } : undefined}
       >
         {src ? (
@@ -58,7 +62,7 @@ export default function CardTile({
             no image
           </div>
         )}
-      </div>
+      </button>
       <p className="w-full truncate text-center text-xs text-ink">{pick.card.name}</p>
       <p className="text-[11px]">
         <span style={{ color: RARITY_COLOR[pick.card.rarity] }}>

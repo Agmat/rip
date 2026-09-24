@@ -17,6 +17,7 @@ import {
 import { isDimmed, loadSettings, saveSettings, type Settings } from "@/lib/settings";
 import type { PackOpen, Pricing, SetSummary } from "@/lib/types";
 import CardTile from "./CardTile";
+import CardZoom from "./CardZoom";
 import HistoryDrawer from "./HistoryDrawer";
 import Pack from "./Pack";
 import SettingsModal from "./SettingsModal";
@@ -41,6 +42,7 @@ export default function PackOpener() {
   const [pack, setPack] = useState<PackOpen | null>(null);
   const [tearing, setTearing] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState<number | null>(null);
   // Only rendered once sets have loaded (client-side), so reading storage in
   // the initializer can't cause a hydration mismatch.
   const [session, setSession] = useState<Session>(loadSession);
@@ -123,9 +125,20 @@ export default function PackOpener() {
               index={i}
               packPrice={pack.pricing.pack_price_eur}
               dimmed={isDimmed(settings, pick.price_eur)}
+              onZoom={() => setZoomed(i)}
             />
           ))}
         </div>
+        {zoomed != null && (
+          <CardZoom
+            cards={pack.cards}
+            index={zoomed}
+            kicker={selectedSet.name}
+            packTotal={pack.pricing.total_value_eur}
+            onIndex={setZoomed}
+            onClose={() => setZoomed(null)}
+          />
+        )}
         {/* Keyed so "rip another" remounts it and the reveal replays; the
             animation start is also what updates the tracker, so both land together. */}
         <PackValue

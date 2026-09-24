@@ -6,6 +6,7 @@ import { formatEUR, formatSignedEUR } from "@/lib/money";
 import type { HistoryEntry } from "@/lib/session";
 import { primaryImage, type CardPick } from "@/lib/types";
 import CardTile from "./CardTile";
+import CardZoom from "./CardZoom";
 
 const TOP_CARDS = 3;
 
@@ -106,7 +107,9 @@ export default function HistoryDrawer({
         onClose={() => setViewing(null)}
       >
         {viewing != null && history[viewing] && (
+          // Keyed per pack so switching packs replays the reveal and drops the zoom.
           <PackViewer
+            key={history[viewing].pack.open_id}
             history={history}
             index={viewing}
             now={now}
@@ -207,6 +210,7 @@ function PackViewer({
   const { n, pack } = history[index];
   const { pack_price_eur: packPrice, total_value_eur: total } = pack.pricing;
   const cards = [...pack.cards].sort((a, b) => (b.price_eur ?? -1) - (a.price_eur ?? -1));
+  const [zoomed, setZoomed] = useState<number | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -258,9 +262,8 @@ function PackViewer({
           </svg>
         </button>
       </header>
-      {/* Keyed per pack so switching packs replays the reveal. */}
       <div className="flex-1 overflow-y-auto">
-        <div key={pack.open_id} className="viewer-grid grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="viewer-grid grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {cards.map((pick, i) => (
             <CardTile
               key={`${pick.slot}-${pick.card.id}`}
@@ -268,10 +271,21 @@ function PackViewer({
               index={i}
               packPrice={packPrice}
               dimmed={false}
+              onZoom={() => setZoomed(i)}
             />
           ))}
         </div>
       </div>
+      {zoomed != null && (
+        <CardZoom
+          cards={cards}
+          index={zoomed}
+          kicker={`Pack #${n}`}
+          packTotal={total}
+          onIndex={setZoomed}
+          onClose={() => setZoomed(null)}
+        />
+      )}
     </div>
   );
 }
